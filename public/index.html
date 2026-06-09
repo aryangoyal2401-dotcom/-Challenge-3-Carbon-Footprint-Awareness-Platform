@@ -1,0 +1,605 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="EcoTrack — Track your carbon footprint and make sustainable choices to save the planet.">
+  <meta name="theme-color" content="#10b981">
+  <title>EcoTrack — Carbon Footprint Tracker</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/styles.css">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
+  <script type="module" src="js/app.js"></script>
+</head>
+<body>
+
+  <!-- Toast Container -->
+  <div id="toast-container"></div>
+
+  <!-- Loading Overlay -->
+  <div id="loading-overlay" class="loading-overlay">
+    <div class="loading-spinner">
+      <svg class="leaf-spinner" viewBox="0 0 64 64" width="64" height="64">
+        <path d="M32 4C32 4 12 16 12 36C12 48 20 56 32 60C44 56 52 48 52 36C52 16 32 4 32 4Z" fill="#10b981" opacity="0.8"/>
+        <path d="M32 16V52" stroke="#065f46" stroke-width="2" fill="none"/>
+        <path d="M32 24C26 28 22 32 20 36" stroke="#065f46" stroke-width="1.5" fill="none"/>
+        <path d="M32 32C38 36 42 38 44 40" stroke="#065f46" stroke-width="1.5" fill="none"/>
+        <path d="M32 40C28 42 24 44 22 46" stroke="#065f46" stroke-width="1.5" fill="none"/>
+      </svg>
+      <p class="loading-text">Loading...</p>
+    </div>
+  </div>
+
+  <!-- Login Page -->
+  <div id="login-page" class="login-page">
+    <div class="login-bg-animation"></div>
+    <div class="login-card glass-card">
+      <div class="login-header">
+        <div class="app-logo">
+          <svg viewBox="0 0 80 80" width="80" height="80">
+            <defs>
+              <linearGradient id="leafGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+                <stop offset="0%" style="stop-color:#10b981"/>
+                <stop offset="100%" style="stop-color:#06b6d4"/>
+              </linearGradient>
+              <filter id="logoGlow">
+                <feGaussianBlur stdDeviation="4" result="blur"/>
+                <feMerge>
+                  <feMergeNode in="blur"/>
+                  <feMergeNode in="SourceGraphic"/>
+                </feMerge>
+              </filter>
+            </defs>
+            <path d="M40 6C40 6 14 22 14 46C14 62 26 72 40 76C54 72 66 62 66 46C66 22 40 6 40 6Z" fill="url(#leafGrad)" filter="url(#logoGlow)"/>
+            <path d="M40 20V68" stroke="rgba(255,255,255,0.4)" stroke-width="2" fill="none"/>
+            <path d="M40 30C32 36 26 40 22 44" stroke="rgba(255,255,255,0.3)" stroke-width="1.5" fill="none"/>
+            <path d="M40 42C48 46 54 50 58 52" stroke="rgba(255,255,255,0.3)" stroke-width="1.5" fill="none"/>
+            <path d="M40 52C34 56 28 58 24 60" stroke="rgba(255,255,255,0.3)" stroke-width="1.5" fill="none"/>
+          </svg>
+        </div>
+        <h1 class="app-title">EcoTrack</h1>
+        <p class="app-tagline">Track your carbon footprint. Save the planet.</p>
+      </div>
+
+      <div class="login-form-container">
+        <div id="login-error" class="login-error hidden"></div>
+
+        <form id="login-form" class="login-form">
+          <div id="signup-name-field" class="form-group hidden">
+            <label for="auth-name">Full Name</label>
+            <input type="text" id="auth-name" placeholder="Enter your full name" autocomplete="name">
+          </div>
+          <div class="form-group">
+            <label for="auth-email">Email</label>
+            <input type="email" id="auth-email" placeholder="Enter your email" required autocomplete="email">
+          </div>
+          <div class="form-group">
+            <label for="auth-password">Password</label>
+            <input type="password" id="auth-password" placeholder="Enter your password" required autocomplete="current-password">
+          </div>
+          <button type="submit" id="btn-auth-submit" class="btn btn-primary btn-block">Sign In</button>
+        </form>
+
+        <p class="login-toggle">
+          <span id="login-toggle-text">Don't have an account?</span>
+          <a href="#" id="login-toggle-link">Sign Up</a>
+        </p>
+      </div>
+    </div>
+  </div>
+
+  <!-- App Shell -->
+  <div id="app-shell" class="app-shell hidden">
+    <!-- Sidebar -->
+    <aside id="sidebar" class="sidebar">
+      <div class="sidebar-header">
+        <div class="sidebar-user">
+          <div id="user-avatar" class="user-avatar">
+            <span id="user-avatar-text">U</span>
+            <img id="user-avatar-img" class="user-avatar-img hidden" alt="User Avatar">
+          </div>
+          <div class="user-info">
+            <h3 id="user-name">User</h3>
+            <span class="user-badge">🌱 Eco Warrior</span>
+          </div>
+        </div>
+      </div>
+      <nav class="sidebar-nav">
+        <a href="#" class="nav-link active" data-page="dashboard">
+          <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="3" y="3" width="7" height="7" rx="1"/>
+            <rect x="14" y="3" width="7" height="7" rx="1"/>
+            <rect x="3" y="14" width="7" height="7" rx="1"/>
+            <rect x="14" y="14" width="7" height="7" rx="1"/>
+          </svg>
+          <span>Dashboard</span>
+        </a>
+        <a href="#" class="nav-link" data-page="log-activity">
+          <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="12" r="10"/>
+            <line x1="12" y1="8" x2="12" y2="16"/>
+            <line x1="8" y1="12" x2="16" y2="12"/>
+          </svg>
+          <span>Log Activity</span>
+        </a>
+        <a href="#" class="nav-link" data-page="insights">
+          <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M9 18V5l12-2v13"/>
+            <circle cx="6" cy="18" r="3"/>
+            <circle cx="18" cy="16" r="3"/>
+          </svg>
+          <span>Insights</span>
+        </a>
+        <a href="#" class="nav-link" data-page="challenges">
+          <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M6 9H4.5a2.5 2.5 0 010-5C7 4 6 9 6 9z"/>
+            <path d="M18 9h1.5a2.5 2.5 0 000-5C17 4 18 9 18 9z"/>
+            <path d="M4 22h16"/>
+            <path d="M10 22V2h4v20"/>
+            <path d="M8 14h8"/>
+          </svg>
+          <span>Challenges</span>
+        </a>
+        <a href="#" class="nav-link" data-page="leaderboard">
+          <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/>
+            <circle cx="9" cy="7" r="4"/>
+            <path d="M23 21v-2a4 4 0 00-3-3.87"/>
+            <path d="M16 3.13a4 4 0 010 7.75"/>
+          </svg>
+          <span>Leaderboard</span>
+        </a>
+        <a href="#" class="nav-link" data-page="settings">
+          <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="12" r="3"/>
+            <path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/>
+          </svg>
+          <span>Settings</span>
+        </a>
+      </nav>
+      <div class="sidebar-footer">
+        <button id="btn-signout" class="btn btn-secondary btn-signout">
+          <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4"/>
+            <polyline points="16 17 21 12 16 7"/>
+            <line x1="21" y1="12" x2="9" y2="12"/>
+          </svg>
+          <span>Sign Out</span>
+        </button>
+      </div>
+    </aside>
+
+    <!-- Mobile Menu Toggle -->
+    <button id="mobile-menu-toggle" class="mobile-menu-toggle">
+      <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <line x1="3" y1="6" x2="21" y2="6"/>
+        <line x1="3" y1="12" x2="21" y2="12"/>
+        <line x1="3" y1="18" x2="21" y2="18"/>
+      </svg>
+    </button>
+
+    <!-- Mobile Sidebar Overlay -->
+    <div id="sidebar-overlay" class="sidebar-overlay"></div>
+
+    <!-- Main Content -->
+    <main class="main-content">
+      <div class="top-bar">
+        <h1 id="page-title" class="page-title">Dashboard</h1>
+        <div class="top-bar-actions">
+          <span id="greeting-text" class="greeting-text"></span>
+        </div>
+      </div>
+      <div id="page-content" class="page-content"></div>
+    </main>
+  </div>
+
+  <!-- ==================== PAGE TEMPLATES ==================== -->
+
+  <!-- Dashboard Template -->
+  <template id="tmpl-dashboard">
+    <div class="dashboard-page animate-fade-in">
+      <!-- Stats Row -->
+      <section class="page-section">
+        <div class="stats-grid grid-4">
+          <div class="stat-card glass-card" id="stat-total-co2">
+            <div class="stat-icon" style="background: rgba(16,185,129,0.15); color: #10b981;">
+              <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 22L12 2l10 20H2z"/></svg>
+            </div>
+            <div class="stat-value" data-target="0">0</div>
+            <div class="stat-label">Total CO₂ (kg)</div>
+          </div>
+          <div class="stat-card glass-card" id="stat-daily-avg">
+            <div class="stat-icon" style="background: rgba(6,182,212,0.15); color: #06b6d4;">
+              <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+            </div>
+            <div class="stat-value" data-target="0">0</div>
+            <div class="stat-label">Daily Avg (kg)</div>
+          </div>
+          <div class="stat-card glass-card" id="stat-eco-score">
+            <div class="stat-icon" style="background: rgba(245,158,11,0.15); color: #f59e0b;">
+              <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+            </div>
+            <div class="stat-value" data-target="0">0</div>
+            <div class="stat-label">Eco Score</div>
+          </div>
+          <div class="stat-card glass-card" id="stat-streak">
+            <div class="stat-icon" style="background: rgba(236,72,153,0.15); color: #ec4899;">
+              <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>
+            </div>
+            <div class="stat-value" data-target="0">0</div>
+            <div class="stat-label">Day Streak 🔥</div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Charts Row -->
+      <section class="page-section">
+        <div class="charts-grid grid-2">
+          <div class="chart-card glass-card" id="chart-category-breakdown">
+            <h3 class="card-title">Category Breakdown</h3>
+            <div class="chart-container chart-container-donut">
+              <canvas id="categoryChart"></canvas>
+            </div>
+          </div>
+          <div class="chart-card glass-card" id="chart-weekly-trend">
+            <h3 class="card-title">Weekly Trend</h3>
+            <div class="chart-container">
+              <canvas id="weeklyChart"></canvas>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Quick Actions -->
+      <section class="page-section">
+        <h2 class="section-title">Quick Log</h2>
+        <div class="quick-actions grid-4">
+          <button class="quick-action-card glass-card" data-category="transportation">
+            <div class="quick-action-icon" style="background: rgba(59,130,246,0.15); color: #3b82f6;">🚗</div>
+            <span class="quick-action-label">Transportation</span>
+          </button>
+          <button class="quick-action-card glass-card" data-category="food">
+            <div class="quick-action-icon" style="background: rgba(245,158,11,0.15); color: #f59e0b;">🍽️</div>
+            <span class="quick-action-label">Food</span>
+          </button>
+          <button class="quick-action-card glass-card" data-category="energy">
+            <div class="quick-action-icon" style="background: rgba(139,92,246,0.15); color: #8b5cf6;">⚡</div>
+            <span class="quick-action-label">Energy</span>
+          </button>
+          <button class="quick-action-card glass-card" data-category="shopping">
+            <div class="quick-action-icon" style="background: rgba(236,72,153,0.15); color: #ec4899;">🛍️</div>
+            <span class="quick-action-label">Shopping</span>
+          </button>
+        </div>
+      </section>
+
+      <!-- Recent Activities -->
+      <section class="page-section">
+        <h2 class="section-title">Recent Activities</h2>
+        <div id="recent-activities" class="recent-activities">
+          <div class="empty-state">
+            <div class="empty-state-icon">📊</div>
+            <h3>No activities yet</h3>
+            <p>Start logging your daily activities to track your carbon footprint.</p>
+            <button class="btn btn-primary" data-navigate="log-activity">Log Your First Activity</button>
+          </div>
+        </div>
+      </section>
+    </div>
+  </template>
+
+  <!-- Log Activity Template -->
+  <template id="tmpl-log-activity">
+    <div class="log-activity-page animate-fade-in">
+      <!-- Category Selector -->
+      <section class="page-section">
+        <h2 class="section-title">Select Category</h2>
+        <div class="category-selector grid-4">
+          <button class="category-card glass-card" data-category="transportation">
+            <div class="category-icon" style="background: rgba(59,130,246,0.15);">🚗</div>
+            <span class="category-label">Transportation</span>
+          </button>
+          <button class="category-card glass-card" data-category="food">
+            <div class="category-icon" style="background: rgba(245,158,11,0.15);">🍽️</div>
+            <span class="category-label">Food</span>
+          </button>
+          <button class="category-card glass-card" data-category="energy">
+            <div class="category-icon" style="background: rgba(139,92,246,0.15);">⚡</div>
+            <span class="category-label">Energy</span>
+          </button>
+          <button class="category-card glass-card" data-category="shopping">
+            <div class="category-icon" style="background: rgba(236,72,153,0.15);">🛍️</div>
+            <span class="category-label">Shopping</span>
+          </button>
+        </div>
+      </section>
+
+      <!-- Activity Form -->
+      <section class="page-section">
+        <div id="activity-form-container" class="activity-form-container glass-card hidden">
+          <h3 class="card-title" id="form-category-title">Log Activity</h3>
+          <form id="activity-form" class="activity-form">
+            <div class="form-group">
+              <label for="activity-subcategory">Type</label>
+              <select id="activity-subcategory" required>
+                <option value="">Select type...</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label for="activity-value" id="activity-value-label">Amount</label>
+              <input type="number" id="activity-value" step="0.1" min="0" placeholder="Enter amount" required>
+            </div>
+            <div class="form-group">
+              <label for="activity-date">Date</label>
+              <input type="date" id="activity-date" required>
+            </div>
+            <div class="form-group">
+              <label for="activity-notes">Notes (optional)</label>
+              <textarea id="activity-notes" rows="2" placeholder="Add any notes..."></textarea>
+            </div>
+            <div id="emission-preview" class="emission-preview glass-card">
+              <div class="emission-preview-label">Estimated Emissions</div>
+              <div class="emission-preview-value">
+                <span id="emission-preview-amount">0.00</span>
+                <span class="emission-preview-unit">kg CO₂</span>
+              </div>
+            </div>
+            <button type="submit" class="btn btn-primary btn-block">
+              <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>
+              Log Activity
+            </button>
+          </form>
+        </div>
+      </section>
+
+      <!-- Activity History -->
+      <section class="page-section">
+        <h2 class="section-title">Activity History</h2>
+        <div id="activity-history" class="activity-history">
+          <div class="empty-state">
+            <div class="empty-state-icon">📝</div>
+            <h3>No activities logged</h3>
+            <p>Select a category above to start logging.</p>
+          </div>
+        </div>
+      </section>
+    </div>
+  </template>
+
+  <!-- Insights Template -->
+  <template id="tmpl-insights">
+    <div class="insights-page animate-fade-in">
+      <!-- Impact Overview -->
+      <section class="page-section">
+        <h2 class="section-title">Your Environmental Impact</h2>
+        <div class="impact-grid grid-3">
+          <div class="impact-card glass-card">
+            <div class="impact-icon">🌳</div>
+            <div class="impact-value" id="impact-trees" data-target="0">0</div>
+            <div class="impact-label">Trees Needed to Offset</div>
+          </div>
+          <div class="impact-card glass-card">
+            <div class="impact-icon">🚗</div>
+            <div class="impact-value" id="impact-car-km" data-target="0">0</div>
+            <div class="impact-label">Car KM Equivalent</div>
+          </div>
+          <div class="impact-card glass-card">
+            <div class="impact-icon">📱</div>
+            <div class="impact-value" id="impact-phone-charges" data-target="0">0</div>
+            <div class="impact-label">Smartphone Charges</div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Comparison Chart -->
+      <section class="page-section">
+        <div class="chart-card glass-card">
+          <h3 class="card-title">How You Compare</h3>
+          <div class="chart-container">
+            <canvas id="comparisonChart"></canvas>
+          </div>
+        </div>
+      </section>
+
+      <!-- Personalized Tips -->
+      <section class="page-section">
+        <h2 class="section-title">Personalized Tips</h2>
+        <div id="insight-cards" class="insights-grid grid-3">
+          <div class="empty-state">
+            <div class="empty-state-icon">💡</div>
+            <h3>Log more activities</h3>
+            <p>We need more data to generate personalized insights for you.</p>
+          </div>
+        </div>
+      </section>
+    </div>
+  </template>
+
+  <!-- Challenges Template -->
+  <template id="tmpl-challenges">
+    <div class="challenges-page animate-fade-in">
+      <!-- Active Challenges -->
+      <section class="page-section">
+        <h2 class="section-title">🔥 Active Challenges</h2>
+        <div id="active-challenges" class="challenges-grid grid-2">
+          <div class="empty-state">
+            <div class="empty-state-icon">🏆</div>
+            <h3>No active challenges</h3>
+            <p>Join a challenge below to get started!</p>
+          </div>
+        </div>
+      </section>
+
+      <!-- Available Challenges -->
+      <section class="page-section">
+        <h2 class="section-title">Available Challenges</h2>
+        <div id="available-challenges" class="challenges-grid grid-2">
+          <div class="loading-skeleton">
+            <div class="skeleton-card"></div>
+            <div class="skeleton-card"></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Badges Gallery -->
+      <section class="page-section">
+        <h2 class="section-title">🏅 Badges</h2>
+        <div id="badges-gallery" class="badges-grid">
+          <div class="loading-skeleton">
+            <div class="skeleton-badge"></div>
+            <div class="skeleton-badge"></div>
+            <div class="skeleton-badge"></div>
+            <div class="skeleton-badge"></div>
+          </div>
+        </div>
+      </section>
+    </div>
+  </template>
+
+  <!-- Leaderboard Template -->
+  <template id="tmpl-leaderboard">
+    <div class="leaderboard-page animate-fade-in">
+      <!-- User Rank -->
+      <section class="page-section">
+        <div id="user-rank-card" class="user-rank-card glass-card">
+          <div class="rank-highlight">
+            <span class="rank-number">#--</span>
+            <span class="rank-label">Your Rank</span>
+          </div>
+          <div class="rank-details">
+            <div class="rank-stat">
+              <span class="rank-stat-value" id="rank-eco-score">0</span>
+              <span class="rank-stat-label">Eco Score</span>
+            </div>
+            <div class="rank-stat">
+              <span class="rank-stat-value" id="rank-badges">0</span>
+              <span class="rank-stat-label">Badges</span>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Leaderboard List -->
+      <section class="page-section">
+        <h2 class="section-title">Top Eco Warriors</h2>
+        <div id="leaderboard-list" class="leaderboard-list">
+          <div class="loading-skeleton">
+            <div class="skeleton-row"></div>
+            <div class="skeleton-row"></div>
+            <div class="skeleton-row"></div>
+          </div>
+        </div>
+      </section>
+    </div>
+  </template>
+
+  <!-- Settings Template -->
+  <template id="tmpl-settings">
+    <div class="settings-page animate-fade-in">
+      <!-- Profile Section -->
+      <section class="page-section">
+        <h2 class="section-title">Profile</h2>
+        <div class="settings-card glass-card">
+          <div class="settings-profile-header">
+            <div class="settings-avatar" id="settings-avatar">
+              <span id="settings-avatar-text">U</span>
+              <img id="settings-avatar-img" class="hidden" alt="Profile">
+            </div>
+            <div class="settings-profile-info">
+              <h3 id="settings-display-name">User</h3>
+              <p id="settings-email" class="text-secondary">user@example.com</p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Preferences -->
+      <section class="page-section">
+        <h2 class="section-title">Preferences</h2>
+        <div class="settings-card glass-card">
+          <form id="settings-form" class="settings-form">
+            <div class="form-row grid-2">
+              <div class="form-group">
+                <label for="pref-household">Household Size</label>
+                <input type="number" id="pref-household" min="1" max="20" value="1">
+              </div>
+              <div class="form-group">
+                <label for="pref-region">Region</label>
+                <select id="pref-region">
+                  <option value="global">Global Average</option>
+                  <option value="india">India</option>
+                  <option value="us">United States</option>
+                  <option value="eu">European Union</option>
+                  <option value="uk">United Kingdom</option>
+                </select>
+              </div>
+            </div>
+            <div class="form-row grid-2">
+              <div class="form-group">
+                <label for="pref-diet">Diet Type</label>
+                <select id="pref-diet">
+                  <option value="omnivore">Omnivore</option>
+                  <option value="pescatarian">Pescatarian</option>
+                  <option value="vegetarian">Vegetarian</option>
+                  <option value="vegan">Vegan</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label for="pref-transport">Primary Transport</label>
+                <select id="pref-transport">
+                  <option value="car">Car</option>
+                  <option value="public_transit">Public Transit</option>
+                  <option value="bicycle">Bicycle</option>
+                  <option value="walking">Walking</option>
+                  <option value="electric_vehicle">Electric Vehicle</option>
+                </select>
+              </div>
+            </div>
+            <div class="form-group">
+              <label for="pref-goal">Monthly CO₂ Goal (kg)</label>
+              <input type="number" id="pref-goal" min="0" step="10" value="300" placeholder="e.g., 300">
+            </div>
+            <button type="submit" class="btn btn-primary">
+              <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21H5a2 2 0 01-2-2V5a2 2 0 012-2h11l5 5v11a2 2 0 01-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
+              Save Preferences
+            </button>
+          </form>
+        </div>
+      </section>
+
+      <!-- Data Section -->
+      <section class="page-section">
+        <h2 class="section-title">Data</h2>
+        <div class="settings-card glass-card">
+          <div class="settings-data-actions">
+            <button id="btn-export-data" class="btn btn-secondary">
+              <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+              Export Data (JSON)
+            </button>
+            <button id="btn-import-data" class="btn btn-secondary">
+              <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+              Import Data
+            </button>
+            <input type="file" id="import-file-input" accept=".json" class="hidden">
+          </div>
+        </div>
+      </section>
+
+      <!-- Danger Zone -->
+      <section class="page-section">
+        <h2 class="section-title text-red">Danger Zone</h2>
+        <div class="settings-card glass-card danger-zone">
+          <p class="text-secondary">Once you delete your account, there is no going back. Please be certain.</p>
+          <button id="btn-delete-account" class="btn btn-danger mt-2">
+            <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"/></svg>
+            Delete Account
+          </button>
+        </div>
+      </section>
+    </div>
+  </template>
+
+</body>
+</html>
