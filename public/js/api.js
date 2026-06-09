@@ -70,6 +70,11 @@ const api = {
   getCompletedChallenges: () => request('/challenges/completed'),
   getBadges: () => request('/challenges/badges'),
 
+  // Admin
+  getAdminStats: () => request('/admin/stats'),
+  getAdminUsers: () => request('/admin/users'),
+  deleteAdminUser: (id) => request(`/admin/users/${id}`, { method: 'DELETE' }),
+
   // Leaderboard
   getLeaderboard: () => request('/leaderboard'),
   getUserRank: () => request('/leaderboard/rank'),

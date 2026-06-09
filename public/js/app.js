@@ -16,6 +16,7 @@ import { init as initInsights } from './pages/insights.js';
 import { init as initChallenges } from './pages/challenges.js';
 import { init as initLeaderboard } from './pages/leaderboard.js';
 import { init as initSettings } from './pages/settings.js';
+import { init as initAdmin } from './pages/admin.js';
 
 // Register pages
 registerPage('dashboard', initDashboard);
@@ -24,6 +25,7 @@ registerPage('insights', initInsights);
 registerPage('challenges', initChallenges);
 registerPage('leaderboard', initLeaderboard);
 registerPage('settings', initSettings);
+registerPage('admin', initAdmin);
 
 // DOM elements
 const loginPage = document.getElementById('login-page');
@@ -63,6 +65,15 @@ function showApp(user) {
   appShell.classList.remove('hidden');
   updateUserInfo(user);
   if (greetingText) greetingText.textContent = `${getGreeting()}, ${user.displayName || 'there'}! 🌿`;
+
+  const adminLink = document.getElementById('nav-link-admin');
+  if (adminLink) {
+    if (user.email === 'admin@ecotrack.com') {
+      adminLink.classList.remove('hidden');
+    } else {
+      adminLink.classList.add('hidden');
+    }
+  }
 }
 
 function showLogin() {

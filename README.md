@@ -9,7 +9,27 @@
 
 ---
 
-## 🚀 Features
+## 🎯 Hackathon Submission Details
+
+### Chosen Vertical
+**Challenge 3: Carbon Footprint Awareness Platform.** We designed a smart, dynamic assistant that helps individuals understand, track, and reduce their carbon footprint through simple actions and personalized insights.
+
+### Approach and Logic
+We chose to build a **fully self-contained, lightweight architecture**. Instead of relying on complex cloud databases that require API keys and setup, we built the platform on top of an embedded database (`nedb`) with secure local JWT authentication. 
+
+The core logic of the platform revolves around the **Insight Engine (Smart Assistant)**. When a user logs activities across four categories (Transportation, Energy, Food, Shopping), the Insight Engine analyzes their highest emission areas and dynamically generates personalized recommendations, impact equivalencies (e.g., "Trees needed to offset"), and tracks progress against a monthly net-zero target.
+
+### How the Solution Works
+1. **Authentication:** Users sign up locally. Their password is mathematically hashed using `bcrypt` and they receive a JWT token for secure session management.
+2. **Activity Logging:** Users input their daily activities. The backend intercepts this, cross-references it with a comprehensive dictionary of EPA/DEFRA emission factors, and calculates the exact kg CO₂ emitted.
+3. **Smart Assistant & Gamification:** The dashboard visualizes their progress. The system assigns an "Eco Score", tracks daily streaks, and unlocks community badges as the user logs more eco-friendly actions.
+4. **Admin Panel:** A built-in Role-Based Access Control (RBAC) system grants `admin@ecotrack.com` secure access to monitor platform-wide engagement.
+
+### Assumptions Made
+- We assumed standard global emission averages for calculations where specific regional data is unavailable.
+- We assumed the user is running the application locally for the hackathon judging, so the database persists locally in the `/data` folder rather than requiring cloud MongoDB credentials.
+
+---
 
 | Feature | Description |
 |---|---|

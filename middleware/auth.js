@@ -38,4 +38,14 @@ function generateToken(user) {
   );
 }
 
-module.exports = { verifyToken, optionalAuth, generateToken, JWT_SECRET };
+function verifyAdmin(req, res, next) {
+  verifyToken(req, res, () => {
+    if (req.user && req.user.email === 'admin@ecotrack.com') {
+      next();
+    } else {
+      return res.status(403).json({ success: false, error: 'Admin access required' });
+    }
+  });
+}
+
+module.exports = { verifyToken, optionalAuth, generateToken, verifyAdmin, JWT_SECRET };

@@ -37,7 +37,8 @@ export function navigateTo(pageName) {
       'insights': 'Insights',
       'challenges': 'Challenges',
       'leaderboard': 'Leaderboard',
-      'settings': 'Settings'
+      'settings': 'Settings',
+      'admin': 'Admin'
     };
     pageTitle.textContent = titles[pageName] || pageName;
   }

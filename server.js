@@ -34,6 +34,7 @@ app.use('/api/dashboard', require('./routes/dashboard'));
 app.use('/api/insights', require('./routes/insights'));
 app.use('/api/challenges', require('./routes/challenges'));
 app.use('/api/leaderboard', require('./routes/leaderboard'));
+app.use('/api/admin', require('./routes/admin'));
 
 // ---------------------------------------------------------------------------
 // Health check
