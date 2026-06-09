@@ -71,21 +71,31 @@ No database configuration, no API keys, no environment variables required! Every
 
 - **Node.js** 18+ installed
 
-### 1. Clone & Install
+### 🐳 Ultimate Automated Setup (Docker)
+For the fastest possible setup without installing Node.js, we have included a fully automated Docker configuration.
 
-```bash
-git clone https://github.com/your-username/ecotrack-carbon-platform.git
-cd ecotrack-carbon-platform
-npm install
-```
+1. Ensure [Docker](https://www.docker.com/) is installed.
+2. Run the following command in the terminal:
+   ```bash
+   docker-compose up -d --build
+   ```
+3. Open `http://localhost:5000` in your browser.
 
-### 2. Run the App
+---
 
-```bash
-npm start
-```
+### 💻 Standard Local Setup (Node.js)
 
-Open **http://localhost:5000** in your browser! 🎉 
+1. Clone this repository
+2. Open terminal in the project folder
+3. Install dependencies:
+   ```bash
+   npm install
+   ```
+4. Start the server:
+   ```bash
+   npm start
+   ```
+5. Open `http://localhost:5000` in your browser.! 🎉 
 Click **Sign Up** to create your first local account and start logging activities.
 
 ### Data Storage
