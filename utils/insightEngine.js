@@ -1,4 +1,4 @@
-const { EMISSION_FACTORS, NATIONAL_AVERAGES, EQUIVALENCIES } = require('./emissionFactors');
+const { NATIONAL_AVERAGES, EQUIVALENCIES } = require('./emissionFactors');
 
 // ---------------------------------------------------------------------------
 // generateInsights

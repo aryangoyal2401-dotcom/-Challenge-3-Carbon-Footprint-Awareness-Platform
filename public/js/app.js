@@ -4,8 +4,7 @@
  * Uses local JWT authentication (no Firebase)
  */
 
-import { login, register, logout, getToken, isAuthenticated, getCurrentUser, onAuthReady } from './auth.js';
-import api from './api.js';
+import { login, register, logout, onAuthReady } from './auth.js';
 import { registerPage, navigateTo } from './router.js';
 import { showToast } from './utils/toast.js';
 import { getGreeting } from './utils/helpers.js';
@@ -127,7 +126,7 @@ async function generateCaptcha() {
     } else {
       if (captchaQuestion) captchaQuestion.textContent = 'Error. Click checkbox to retry.';
     }
-  } catch (err) {
+  } catch {
     if (captchaQuestion) captchaQuestion.textContent = 'Network error. Click checkbox to retry.';
   }
 }
@@ -176,7 +175,7 @@ if (captchaVerifyBtn) {
         generateCaptcha();
         if (captchaAnswer) { captchaAnswer.value = ''; captchaAnswer.focus(); }
       }
-    } catch (err) {
+    } catch {
       showToast('Network error during verification.', 'error');
     }
   });
@@ -221,7 +220,6 @@ function showLogin() {
   clearLoginForm();
 }
 
-function showLoading() { if (loadingOverlay) loadingOverlay.classList.remove('hidden'); }
 function hideLoading() { if (loadingOverlay) loadingOverlay.classList.add('hidden'); }
 
 function updateUserInfo(user) {
@@ -357,7 +355,6 @@ const forgotPasswordLink = document.getElementById('forgot-password-link');
 const forgotPasswordPanel = document.getElementById('forgot-password-panel');
 const forgotBackLink = document.getElementById('forgot-back-link');
 const forgotError = document.getElementById('forgot-error');
-const loginFormContainer = document.querySelector('.login-form-container');
 const btnForgotSend = document.getElementById('btn-forgot-send');
 const btnForgotReset = document.getElementById('btn-forgot-reset');
 const forgotStepEmail = document.getElementById('forgot-step-email');
@@ -434,7 +431,7 @@ if (btnForgotSend) {
       } else {
         showForgotError(data.error || 'Failed to process request.');
       }
-    } catch (err) {
+    } catch {
       showForgotError('Network error. Please try again.');
     }
 
@@ -472,7 +469,7 @@ if (btnForgotReset) {
       } else {
         showForgotError(data.error || 'Failed to reset password.');
       }
-    } catch (err) {
+    } catch {
       showForgotError('Network error. Please try again.');
     }
 

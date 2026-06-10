@@ -37,7 +37,7 @@ router.get('/users', async (req, res) => {
     const users = await db.users.find({}).sort({ createdAt: -1 });
     
     const safeUsers = users.map(u => {
-      const { password, ...safe } = u;
+      const { password: _password, ...safe } = u;
       return safe;
     });
 

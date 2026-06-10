@@ -20,7 +20,7 @@ function verifyToken(req, res, next) {
     const decoded = jwt.verify(token, JWT_SECRET);
     req.user = decoded;
     next();
-  } catch (err) {
+  } catch {
     return res.status(401).json({ success: false, error: 'Invalid token' });
   }
 }
@@ -31,7 +31,7 @@ function optionalAuth(req, res, next) {
     try {
       const token = authHeader.split('Bearer ')[1];
       req.user = jwt.verify(token, JWT_SECRET);
-    } catch (e) {
+    } catch {
       req.user = null;
     }
   }

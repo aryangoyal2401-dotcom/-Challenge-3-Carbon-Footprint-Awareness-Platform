@@ -4,7 +4,7 @@
 
 import api from '../api.js';
 import { createCategoryDonut, createWeeklyTrend } from '../charts.js';
-import { animateValue, formatCO2, formatRelativeDate, getCategoryIcon, getCategoryColor, getSubCategoryLabel } from '../utils/helpers.js';
+import { animateValue, formatRelativeDate, getCategoryIcon, getCategoryColor, getSubCategoryLabel } from '../utils/helpers.js';
 import { navigateTo } from '../router.js';
 
 export async function init() {

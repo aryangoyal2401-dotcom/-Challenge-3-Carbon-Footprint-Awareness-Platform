@@ -83,7 +83,7 @@ router.post('/verify-captcha', (req, res) => {
     }
 
     return res.json({ success: true, data: { verified: true } });
-  } catch (err) {
+  } catch {
     return res.status(500).json({ success: false, error: 'Verification failed' });
   }
 });
@@ -93,7 +93,7 @@ router.post('/verify-captcha', (req, res) => {
 // ---------------------------------------------------------------------------
 function sanitizeUser(user) {
   if (!user) return null;
-  const { password, ...safe } = user;
+  const { password: _password, ...safe } = user;
   return safe;
 }
 
@@ -135,7 +135,7 @@ router.post('/register', async (req, res) => {
       if (expectedHash !== hash) {
         return res.status(400).json({ success: false, error: 'Incorrect CAPTCHA answer' });
       }
-    } catch (err) {
+    } catch {
       return res.status(400).json({ success: false, error: 'CAPTCHA verification failed' });
     }
 

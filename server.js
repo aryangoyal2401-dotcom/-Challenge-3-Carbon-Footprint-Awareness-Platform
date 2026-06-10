@@ -9,7 +9,7 @@ const rateLimiter = require('./middleware/rateLimiter');
 const sanitize = require('./middleware/sanitize');
 
 // Initialize nedb databases (auto-loaded on require)
-const db = require('./config/db');
+require('./config/db');
 
 const app = express();
 
@@ -60,7 +60,6 @@ app.get('*', (_req, res) => {
 // ---------------------------------------------------------------------------
 // Global error handling middleware
 // ---------------------------------------------------------------------------
-// eslint-disable-next-line no-unused-vars
 app.use((err, _req, res, _next) => {
   console.error('Unhandled error:', err);
 
