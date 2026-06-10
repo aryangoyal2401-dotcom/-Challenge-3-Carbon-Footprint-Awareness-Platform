@@ -2,8 +2,64 @@ const express = require('express');
 const db = require('../config/db');
 const { verifyToken } = require('../middleware/auth');
 const { getEmissionFactor } = require('../utils/emissionFactors');
+const { calculateEcoScore } = require('../utils/insightEngine');
 
 const router = express.Router();
+
+// ---------------------------------------------------------------------------
+// Helper – Update user's ecoScore and totalCO2Saved
+// ---------------------------------------------------------------------------
+async function updateUserEcoMetrics(userId) {
+  try {
+    const user = await db.users.findOne({ _id: userId });
+    if (!user) return;
+
+    // Fetch all user activities
+    const activities = await db.activities.find({ userId });
+
+    // 1. Calculate total CO2 saved based on eco-friendly choices
+    let totalCO2Saved = 0;
+    for (const act of activities) {
+      if (act.category === 'food') {
+        if (act.subCategory === 'vegan_meal') totalCO2Saved += act.value * (7.0 - 0.3);
+        else if (act.subCategory === 'vegetarian_meal') totalCO2Saved += act.value * (7.0 - 0.5);
+        else if (act.subCategory === 'chicken_meal') totalCO2Saved += act.value * (7.0 - 1.5);
+        else if (act.subCategory === 'fish_meal') totalCO2Saved += act.value * (7.0 - 1.2);
+      } else if (act.category === 'transportation') {
+        if (act.subCategory === 'bicycle' || act.subCategory === 'walking') {
+          totalCO2Saved += act.value * 0.21;
+        } else if (act.subCategory === 'car_electric') {
+          totalCO2Saved += act.value * (0.21 - 0.05);
+        } else if (act.subCategory === 'bus' || act.subCategory === 'train' || act.subCategory === 'subway') {
+          totalCO2Saved += act.value * (0.21 - 0.05); // compared to gasoline car
+        }
+      } else if (act.category === 'energy') {
+        if (act.subCategory === 'solar' || act.subCategory === 'wind') {
+          totalCO2Saved += act.value * 0.45;
+        }
+      } else if (act.category === 'shopping') {
+        if (act.subCategory === 'clothing_sustainable') {
+          totalCO2Saved += act.value * 0.02; // fast fashion (0.04) - sustainable (0.02)
+        }
+      }
+    }
+
+    // 2. Calculate current month activities ecoScore
+    const now = new Date();
+    const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+    const currentMonthActivities = activities.filter(act => new Date(act.date) >= monthStart);
+    
+    const ecoScore = calculateEcoScore(currentMonthActivities, user.monthlyGoal || 500);
+
+    // Update user document
+    await db.users.update(
+      { _id: userId },
+      { $set: { ecoScore, totalCO2Saved: parseFloat(totalCO2Saved.toFixed(2)) } }
+    );
+  } catch (err) {
+    console.error('Error updating user eco metrics:', err);
+  }
+}
 
 // ---------------------------------------------------------------------------
 // Unit lookup by category
@@ -107,6 +163,8 @@ router.post('/', verifyToken, async (req, res) => {
       );
     }
 
+    await updateUserEcoMetrics(req.user._id);
+
     return res.status(201).json({ success: true, data: activity });
   } catch (err) {
     console.error('POST /api/activities error:', err);
@@ -183,6 +241,8 @@ router.delete('/:id', verifyToken, async (req, res) => {
     }
 
     await db.activities.remove({ _id: req.params.id });
+
+    await updateUserEcoMetrics(req.user._id);
 
     return res.json({ success: true, data: { message: 'Activity deleted' } });
   } catch (err) {

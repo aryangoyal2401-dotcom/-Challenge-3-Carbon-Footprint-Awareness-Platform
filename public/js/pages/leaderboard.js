@@ -3,7 +3,7 @@
  */
 
 import api from '../api.js';
-import { animateValue } from '../utils/helpers.js';
+import { animateValue, escapeHTML } from '../utils/helpers.js';
 
 export async function init() {
   await loadLeaderboardData();
@@ -86,7 +86,7 @@ function createLeaderboardItem(user, rank) {
   item.className = `leaderboard-item ${rankClass}`;
   item.style.transform = 'translateY(12px)';
 
-  const displayName = user.displayName || user.name || 'Anonymous';
+  const displayName = escapeHTML(user.displayName || user.name || 'Anonymous');
   const ecoScore = user.ecoScore || user.score || 0;
   const badgesCount = user.badgesCount || user.badges || 0;
   const photoURL = user.photoURL || user.avatar || '';

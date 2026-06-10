@@ -4,7 +4,7 @@
 
 import api from '../api.js';
 import { showToast } from '../utils/toast.js';
-import { createConfirmDialog } from '../utils/helpers.js';
+import { createConfirmDialog, escapeHTML } from '../utils/helpers.js';
 
 export async function init() {
   await loadStats();
@@ -32,14 +32,16 @@ async function loadUsers() {
 
   tbody.innerHTML = '';
   users.forEach(user => {
+    const safeName = escapeHTML(user.displayName || 'Unnamed');
+    const safeEmail = escapeHTML(user.email || '');
     const tr = document.createElement('tr');
     tr.innerHTML = `
-      <td>${user.displayName || 'Unnamed'}</td>
-      <td>${user.email}</td>
+      <td>${safeName}</td>
+      <td>${safeEmail}</td>
       <td>${user.ecoScore || 50}</td>
       <td>${user.currentStreak || 0} days</td>
       <td>
-        <button class="btn btn-secondary btn-sm" onclick="window.deleteUser('${user._id}', '${user.email}')">Delete</button>
+        <button class="btn btn-secondary btn-sm" onclick="window.deleteUser('${user._id}', '${safeEmail}')">Delete</button>
       </td>
     `;
     tbody.appendChild(tr);
