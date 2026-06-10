@@ -14,6 +14,8 @@ export async function init() {
   setupExportHandler();
   setupImportHandler();
   setupDeleteAccountHandler();
+  setupChangeNameHandler();
+  setupChangePasswordHandler();
 }
 
 function populateUserInfo() {
@@ -209,5 +211,85 @@ function setupDeleteAccountHandler() {
         }
       }
     );
+  });
+}
+
+function setupChangeNameHandler() {
+  const btn = document.getElementById('btn-change-name');
+  if (!btn) return;
+
+  btn.addEventListener('click', async () => {
+    const nameInput = document.getElementById('settings-new-name');
+    const newName = nameInput?.value.trim();
+
+    if (!newName) {
+      showToast('Please enter a new name.', 'error');
+      return;
+    }
+
+    btn.disabled = true;
+    btn.textContent = 'Updating...';
+
+    const result = await api.changeName({ displayName: newName });
+
+    btn.disabled = false;
+    btn.textContent = 'Update Name';
+
+    if (result) {
+      showToast('Name updated successfully!', 'success');
+      // Update UI elements
+      const sidebarName = document.getElementById('user-name');
+      const settingsName = document.getElementById('settings-display-name');
+      const avatarText = document.getElementById('user-avatar-text');
+      if (sidebarName) sidebarName.textContent = newName;
+      if (settingsName) settingsName.textContent = newName;
+      if (avatarText) avatarText.textContent = newName.charAt(0).toUpperCase();
+      nameInput.value = '';
+    }
+  });
+}
+
+function setupChangePasswordHandler() {
+  const btn = document.getElementById('btn-change-password');
+  if (!btn) return;
+
+  btn.addEventListener('click', async () => {
+    const currentPwInput = document.getElementById('settings-current-password');
+    const newPwInput = document.getElementById('settings-new-password');
+    const confirmPwInput = document.getElementById('settings-confirm-new-password');
+
+    const currentPassword = currentPwInput?.value;
+    const newPassword = newPwInput?.value;
+    const confirmPassword = confirmPwInput?.value;
+
+    if (!currentPassword || !newPassword) {
+      showToast('Please fill in current and new password.', 'error');
+      return;
+    }
+
+    if (newPassword.length < 6) {
+      showToast('New password must be at least 6 characters.', 'error');
+      return;
+    }
+
+    if (newPassword !== confirmPassword) {
+      showToast('New passwords do not match.', 'error');
+      return;
+    }
+
+    btn.disabled = true;
+    btn.textContent = 'Changing...';
+
+    const result = await api.changePassword({ currentPassword, newPassword });
+
+    btn.disabled = false;
+    btn.textContent = 'Change Password';
+
+    if (result) {
+      showToast('Password changed successfully!', 'success');
+      currentPwInput.value = '';
+      newPwInput.value = '';
+      confirmPwInput.value = '';
+    }
   });
 }

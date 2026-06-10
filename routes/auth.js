@@ -188,6 +188,150 @@ router.post('/sync', verifyToken, async (req, res) => {
 });
 
 // ---------------------------------------------------------------------------
+// PUT /api/auth/change-password
+// ---------------------------------------------------------------------------
+router.put('/change-password', verifyToken, async (req, res) => {
+  try {
+    const { currentPassword, newPassword } = req.body;
+
+    if (!currentPassword || !newPassword) {
+      return res.status(400).json({ success: false, error: 'Current and new passwords are required' });
+    }
+
+    if (newPassword.length < 6) {
+      return res.status(400).json({ success: false, error: 'New password must be at least 6 characters' });
+    }
+
+    if (!/[A-Za-z]/.test(newPassword) || !/[0-9]/.test(newPassword)) {
+      return res.status(400).json({ success: false, error: 'Password must contain both letters and numbers' });
+    }
+
+    const user = await db.users.findOne({ _id: req.user._id });
+    if (!user) {
+      return res.status(404).json({ success: false, error: 'User not found' });
+    }
+
+    const isMatch = await bcrypt.compare(currentPassword, user.password);
+    if (!isMatch) {
+      return res.status(401).json({ success: false, error: 'Current password is incorrect' });
+    }
+
+    const hashedPassword = await bcrypt.hash(newPassword, 10);
+    await db.users.update({ _id: req.user._id }, { $set: { password: hashedPassword } });
+
+    return res.json({ success: true, data: { message: 'Password changed successfully' } });
+  } catch (err) {
+    console.error('PUT /api/auth/change-password error:', err);
+    return res.status(500).json({ success: false, error: 'Failed to change password' });
+  }
+});
+
+// ---------------------------------------------------------------------------
+// PUT /api/auth/change-name
+// ---------------------------------------------------------------------------
+router.put('/change-name', verifyToken, async (req, res) => {
+  try {
+    const { displayName } = req.body;
+
+    if (!displayName || !displayName.trim()) {
+      return res.status(400).json({ success: false, error: 'Display name is required' });
+    }
+
+    await db.users.update({ _id: req.user._id }, { $set: { displayName: displayName.trim() } });
+    const updatedUser = await db.users.findOne({ _id: req.user._id });
+
+    return res.json({ success: true, data: sanitizeUser(updatedUser) });
+  } catch (err) {
+    console.error('PUT /api/auth/change-name error:', err);
+    return res.status(500).json({ success: false, error: 'Failed to change name' });
+  }
+});
+
+// ---------------------------------------------------------------------------
+// POST /api/auth/forgot-password  (no auth required)
+// Generates a temporary reset token, stores it, and returns it.
+// In production you would email this; for local demo we return it directly.
+// ---------------------------------------------------------------------------
+router.post('/forgot-password', async (req, res) => {
+  try {
+    const { email } = req.body;
+
+    if (!email) {
+      return res.status(400).json({ success: false, error: 'Email is required' });
+    }
+
+    const user = await db.users.findOne({ email: email.toLowerCase() });
+    if (!user) {
+      // Don't reveal whether the email exists — return generic success
+      return res.json({
+        success: true,
+        data: { message: 'If an account with that email exists, a reset token has been generated.' }
+      });
+    }
+
+    // Generate a 6-digit reset code
+    const resetCode = String(Math.floor(100000 + Math.random() * 900000));
+    const resetExpiry = new Date(Date.now() + 15 * 60 * 1000); // 15 minutes
+
+    await db.users.update(
+      { _id: user._id },
+      { $set: { resetCode, resetExpiry: resetExpiry.toISOString() } }
+    );
+
+    console.log(`\n🔑 PASSWORD RESET CODE for ${user.email}: ${resetCode} (expires in 15 min)\n`);
+
+    return res.json({
+      success: true,
+      data: {
+        message: 'If an account with that email exists, a reset code has been generated. Check the server console for demo purposes.',
+        // For the hackathon demo, we return the code directly so the UI can show it
+        resetCode
+      }
+    });
+  } catch (err) {
+    console.error('POST /api/auth/forgot-password error:', err);
+    return res.status(500).json({ success: false, error: 'Failed to process request' });
+  }
+});
+
+// ---------------------------------------------------------------------------
+// POST /api/auth/reset-password  (no auth required)
+// ---------------------------------------------------------------------------
+router.post('/reset-password', async (req, res) => {
+  try {
+    const { email, resetCode, newPassword } = req.body;
+
+    if (!email || !resetCode || !newPassword) {
+      return res.status(400).json({ success: false, error: 'Email, reset code, and new password are required' });
+    }
+
+    if (newPassword.length < 6) {
+      return res.status(400).json({ success: false, error: 'New password must be at least 6 characters' });
+    }
+
+    const user = await db.users.findOne({ email: email.toLowerCase() });
+    if (!user || user.resetCode !== resetCode) {
+      return res.status(400).json({ success: false, error: 'Invalid reset code' });
+    }
+
+    if (new Date() > new Date(user.resetExpiry)) {
+      return res.status(400).json({ success: false, error: 'Reset code has expired. Please request a new one.' });
+    }
+
+    const hashedPassword = await bcrypt.hash(newPassword, 10);
+    await db.users.update(
+      { _id: user._id },
+      { $set: { password: hashedPassword }, $unset: { resetCode: true, resetExpiry: true } }
+    );
+
+    return res.json({ success: true, data: { message: 'Password has been reset successfully. You can now sign in.' } });
+  } catch (err) {
+    console.error('POST /api/auth/reset-password error:', err);
+    return res.status(500).json({ success: false, error: 'Failed to reset password' });
+  }
+});
+
+// ---------------------------------------------------------------------------
 // DELETE /api/auth/account
 // ---------------------------------------------------------------------------
 router.delete('/account', verifyToken, async (req, res) => {

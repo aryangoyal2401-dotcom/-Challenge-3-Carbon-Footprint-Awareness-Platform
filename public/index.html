@@ -113,6 +113,43 @@
           <span id="login-toggle-text">Don't have an account?</span>
           <a href="#" id="login-toggle-link">Sign Up</a>
         </p>
+        <p class="login-toggle">
+          <a href="#" id="forgot-password-link">Forgot Password?</a>
+        </p>
+      </div>
+
+      <!-- Forgot Password Panel (hidden by default) -->
+      <div id="forgot-password-panel" class="login-form-container hidden">
+        <h2 class="forgot-title">Reset Password</h2>
+        <p class="text-secondary" style="margin-bottom:16px;">Enter your email to receive a reset code.</p>
+        <div id="forgot-error" class="login-error hidden"></div>
+
+        <!-- Step 1: Email -->
+        <div id="forgot-step-email">
+          <div class="form-group">
+            <label for="forgot-email">Email</label>
+            <input type="email" id="forgot-email" placeholder="Enter your registered email" required>
+          </div>
+          <button type="button" id="btn-forgot-send" class="btn btn-primary btn-block">Send Reset Code</button>
+        </div>
+
+        <!-- Step 2: Code + New Password -->
+        <div id="forgot-step-reset" class="hidden">
+          <div id="forgot-code-display" class="reset-code-display"></div>
+          <div class="form-group">
+            <label for="forgot-code">Reset Code</label>
+            <input type="text" id="forgot-code" placeholder="Enter 6-digit code" maxlength="6" autocomplete="off">
+          </div>
+          <div class="form-group">
+            <label for="forgot-new-password">New Password</label>
+            <input type="password" id="forgot-new-password" placeholder="Enter new password">
+          </div>
+          <button type="button" id="btn-forgot-reset" class="btn btn-primary btn-block">Reset Password</button>
+        </div>
+
+        <p class="login-toggle" style="margin-top:16px;">
+          <a href="#" id="forgot-back-link">← Back to Sign In</a>
+        </p>
       </div>
     </div>
   </div>
@@ -543,6 +580,41 @@
             <div class="settings-profile-info">
               <h3 id="settings-display-name">User</h3>
               <p id="settings-email" class="text-secondary">user@example.com</p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Account Security -->
+      <section class="page-section">
+        <h2 class="section-title">Account Security</h2>
+        <div class="settings-card glass-card">
+          <div class="form-row grid-2">
+            <!-- Change Name -->
+            <div class="security-block">
+              <h4>Change Display Name</h4>
+              <div class="form-group">
+                <label for="settings-new-name">New Name</label>
+                <input type="text" id="settings-new-name" placeholder="Enter new display name">
+              </div>
+              <button type="button" id="btn-change-name" class="btn btn-secondary">Update Name</button>
+            </div>
+            <!-- Change Password -->
+            <div class="security-block">
+              <h4>Change Password</h4>
+              <div class="form-group">
+                <label for="settings-current-password">Current Password</label>
+                <input type="password" id="settings-current-password" placeholder="Current password">
+              </div>
+              <div class="form-group">
+                <label for="settings-new-password">New Password</label>
+                <input type="password" id="settings-new-password" placeholder="New password">
+              </div>
+              <div class="form-group">
+                <label for="settings-confirm-new-password">Confirm New Password</label>
+                <input type="password" id="settings-confirm-new-password" placeholder="Confirm new password">
+              </div>
+              <button type="button" id="btn-change-password" class="btn btn-secondary">Change Password</button>
             </div>
           </div>
         </div>

@@ -340,3 +340,134 @@ if (sidebarOverlay) sidebarOverlay.addEventListener('click', () => {
   if (sidebar) sidebar.classList.remove('open');
   sidebarOverlay.classList.remove('active');
 });
+
+// ---------- Forgot Password Flow ----------
+const forgotPasswordLink = document.getElementById('forgot-password-link');
+const forgotPasswordPanel = document.getElementById('forgot-password-panel');
+const forgotBackLink = document.getElementById('forgot-back-link');
+const forgotError = document.getElementById('forgot-error');
+const loginFormContainer = document.querySelector('.login-form-container');
+const btnForgotSend = document.getElementById('btn-forgot-send');
+const btnForgotReset = document.getElementById('btn-forgot-reset');
+const forgotStepEmail = document.getElementById('forgot-step-email');
+const forgotStepReset = document.getElementById('forgot-step-reset');
+const forgotCodeDisplay = document.getElementById('forgot-code-display');
+
+let forgotEmail = '';
+
+function showForgotError(msg) {
+  if (forgotError) { forgotError.textContent = msg; forgotError.classList.remove('hidden'); }
+}
+function hideForgotError() {
+  if (forgotError) { forgotError.classList.add('hidden'); forgotError.textContent = ''; }
+}
+
+if (forgotPasswordLink) {
+  forgotPasswordLink.addEventListener('click', (e) => {
+    e.preventDefault();
+    // Hide the login form containers, show forgot panel
+    const allLoginContainers = document.querySelectorAll('#login-page .login-form-container');
+    allLoginContainers.forEach(c => {
+      if (c.id !== 'forgot-password-panel') c.classList.add('hidden');
+    });
+    if (forgotPasswordPanel) forgotPasswordPanel.classList.remove('hidden');
+    if (forgotStepEmail) forgotStepEmail.classList.remove('hidden');
+    if (forgotStepReset) forgotStepReset.classList.add('hidden');
+    hideForgotError();
+  });
+}
+
+if (forgotBackLink) {
+  forgotBackLink.addEventListener('click', (e) => {
+    e.preventDefault();
+    if (forgotPasswordPanel) forgotPasswordPanel.classList.add('hidden');
+    // Show main login form containers back
+    const allLoginContainers = document.querySelectorAll('#login-page .login-form-container');
+    allLoginContainers.forEach(c => {
+      if (c.id !== 'forgot-password-panel') c.classList.remove('hidden');
+    });
+    hideForgotError();
+  });
+}
+
+if (btnForgotSend) {
+  btnForgotSend.addEventListener('click', async () => {
+    hideForgotError();
+    const emailInput = document.getElementById('forgot-email');
+    forgotEmail = emailInput?.value.trim();
+    if (!forgotEmail) { showForgotError('Please enter your email.'); return; }
+
+    btnForgotSend.disabled = true;
+    btnForgotSend.textContent = 'Sending...';
+
+    try {
+      const res = await fetch('/api/auth/forgot-password', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: forgotEmail })
+      });
+      const data = await res.json();
+
+      if (data.success) {
+        // Show step 2
+        if (forgotStepEmail) forgotStepEmail.classList.add('hidden');
+        if (forgotStepReset) forgotStepReset.classList.remove('hidden');
+
+        // For the demo, show the reset code directly
+        if (data.data.resetCode && forgotCodeDisplay) {
+          forgotCodeDisplay.innerHTML = `<div class="reset-code-box">
+            <span class="text-secondary">Your reset code (demo mode):</span>
+            <strong class="reset-code-value">${data.data.resetCode}</strong>
+          </div>`;
+        }
+
+        showToast('Reset code generated!', 'success');
+      } else {
+        showForgotError(data.error || 'Failed to process request.');
+      }
+    } catch (err) {
+      showForgotError('Network error. Please try again.');
+    }
+
+    btnForgotSend.disabled = false;
+    btnForgotSend.textContent = 'Send Reset Code';
+  });
+}
+
+if (btnForgotReset) {
+  btnForgotReset.addEventListener('click', async () => {
+    hideForgotError();
+    const codeInput = document.getElementById('forgot-code');
+    const newPwInput = document.getElementById('forgot-new-password');
+    const resetCode = codeInput?.value.trim();
+    const newPassword = newPwInput?.value;
+
+    if (!resetCode) { showForgotError('Please enter the reset code.'); return; }
+    if (!newPassword || newPassword.length < 6) { showForgotError('New password must be at least 6 characters.'); return; }
+
+    btnForgotReset.disabled = true;
+    btnForgotReset.textContent = 'Resetting...';
+
+    try {
+      const res = await fetch('/api/auth/reset-password', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: forgotEmail, resetCode, newPassword })
+      });
+      const data = await res.json();
+
+      if (data.success) {
+        showToast('Password reset successfully! You can now sign in.', 'success');
+        // Go back to login
+        forgotBackLink?.click();
+      } else {
+        showForgotError(data.error || 'Failed to reset password.');
+      }
+    } catch (err) {
+      showForgotError('Network error. Please try again.');
+    }
+
+    btnForgotReset.disabled = false;
+    btnForgotReset.textContent = 'Reset Password';
+  });
+}

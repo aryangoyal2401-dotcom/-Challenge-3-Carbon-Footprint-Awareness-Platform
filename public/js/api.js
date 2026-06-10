@@ -42,6 +42,10 @@ const api = {
   getProfile: () => request('/auth/profile'),
   updateProfile: (data) => request('/auth/profile', { method: 'PUT', body: JSON.stringify(data) }),
   deleteAccount: () => request('/auth/account', { method: 'DELETE' }),
+  changePassword: (data) => request('/auth/change-password', { method: 'PUT', body: JSON.stringify(data) }),
+  changeName: (data) => request('/auth/change-name', { method: 'PUT', body: JSON.stringify(data) }),
+  forgotPassword: (email) => request('/auth/forgot-password', { method: 'POST', body: JSON.stringify({ email }) }),
+  resetPassword: (data) => request('/auth/reset-password', { method: 'POST', body: JSON.stringify(data) }),
 
   // Activities
   createActivity: (data) => request('/activities', { method: 'POST', body: JSON.stringify(data) }),
