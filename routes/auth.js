@@ -1,9 +1,91 @@
 const express = require('express');
 const bcrypt = require('bcryptjs');
+const crypto = require('crypto');
 const db = require('../config/db');
 const { verifyToken, generateToken } = require('../middleware/auth');
 
 const router = express.Router();
+
+// ---------------------------------------------------------------------------
+// GET /api/auth/captcha (no auth required)
+// Generates a math puzzle and returns a signed token containing the answer and timestamp
+// ---------------------------------------------------------------------------
+router.get('/captcha', (req, res) => {
+  const ops = ['+', '-', '*'];
+  const op = ops[Math.floor(Math.random() * ops.length)];
+  let a, b, answer;
+  switch (op) {
+    case '+':
+      a = Math.floor(Math.random() * 20) + 1;
+      b = Math.floor(Math.random() * 20) + 1;
+      answer = a + b;
+      break;
+    case '-':
+      a = Math.floor(Math.random() * 20) + 5;
+      b = Math.floor(Math.random() * a);
+      answer = a - b;
+      break;
+    case '*':
+      a = Math.floor(Math.random() * 10) + 1;
+      b = Math.floor(Math.random() * 10) + 1;
+      answer = a * b;
+      break;
+  }
+
+  const timestamp = Date.now();
+  const rawData = `${answer}.${timestamp}`;
+  const hash = crypto
+    .createHmac('sha256', process.env.JWT_SECRET || 'ecotrack-secret-key-change-in-production')
+    .update(rawData)
+    .digest('hex');
+  const token = `${timestamp}.${hash}`;
+
+  const displayOp = op === '*' ? '×' : op;
+
+  return res.json({
+    success: true,
+    data: {
+      question: `What is ${a} ${displayOp} ${b}?`,
+      token
+    }
+  });
+});
+
+// ---------------------------------------------------------------------------
+// POST /api/auth/verify-captcha (no auth required)
+// Lightweight verification helper for frontend feedback
+// ---------------------------------------------------------------------------
+router.post('/verify-captcha', (req, res) => {
+  const { captchaAnswer, captchaToken } = req.body;
+  if (!captchaToken || captchaAnswer === undefined) {
+    return res.status(400).json({ success: false, error: 'CAPTCHA answer and token are required' });
+  }
+
+  try {
+    const [timestamp, hash] = captchaToken.split('.');
+    if (!timestamp || !hash) {
+      return res.status(400).json({ success: false, error: 'Invalid CAPTCHA token format' });
+    }
+
+    if (Date.now() - parseInt(timestamp, 10) > 5 * 60 * 1000) {
+      return res.status(400).json({ success: false, error: 'CAPTCHA has expired' });
+    }
+
+    const rawData = `${captchaAnswer}.${timestamp}`;
+    const expectedHash = crypto
+      .createHmac('sha256', process.env.JWT_SECRET || 'ecotrack-secret-key-change-in-production')
+      .update(rawData)
+      .digest('hex');
+
+    if (expectedHash !== hash) {
+      return res.status(400).json({ success: false, error: 'Incorrect answer' });
+    }
+
+    return res.json({ success: true, data: { verified: true } });
+  } catch (err) {
+    return res.status(500).json({ success: false, error: 'Verification failed' });
+  }
+});
 
 // ---------------------------------------------------------------------------
 // Helper – strip password from user doc before returning
@@ -19,13 +101,41 @@ function sanitizeUser(user) {
 // ---------------------------------------------------------------------------
 router.post('/register', async (req, res) => {
   try {
-    const { email, password, displayName } = req.body;
+    const { email, password, displayName, captchaAnswer, captchaToken } = req.body;
 
     if (!email || !password || !displayName) {
       return res.status(400).json({
         success: false,
         error: 'Email, password, and displayName are required',
       });
+    }
+
+    // Server-side CAPTCHA verification
+    if (!captchaToken || captchaAnswer === undefined) {
+      return res.status(400).json({ success: false, error: 'CAPTCHA verification is required' });
+    }
+
+    try {
+      const [timestamp, hash] = captchaToken.split('.');
+      if (!timestamp || !hash) {
+        return res.status(400).json({ success: false, error: 'Invalid CAPTCHA token format' });
+      }
+
+      if (Date.now() - parseInt(timestamp, 10) > 5 * 60 * 1000) {
+        return res.status(400).json({ success: false, error: 'CAPTCHA has expired. Please try again.' });
+      }
+
+      const rawData = `${captchaAnswer}.${timestamp}`;
+      const expectedHash = crypto
+        .createHmac('sha256', process.env.JWT_SECRET || 'ecotrack-secret-key-change-in-production')
+        .update(rawData)
+        .digest('hex');
+
+      if (expectedHash !== hash) {
+        return res.status(400).json({ success: false, error: 'Incorrect CAPTCHA answer' });
+      }
+    } catch (err) {
+      return res.status(400).json({ success: false, error: 'CAPTCHA verification failed' });
     }
 
     // Server-side password strength validation
@@ -275,7 +385,7 @@ router.post('/forgot-password', async (req, res) => {
 
     await db.users.update(
       { _id: user._id },
-      { $set: { resetCode, resetExpiry: resetExpiry.toISOString() } }
+      { $set: { resetCode, resetExpiry: resetExpiry.toISOString(), resetAttempts: 0 } }
     );
 
     console.log(`\n🔑 PASSWORD RESET CODE for ${user.email}: ${resetCode} (expires in 15 min)\n`);
@@ -283,9 +393,7 @@ router.post('/forgot-password', async (req, res) => {
     return res.json({
       success: true,
       data: {
-        message: 'If an account with that email exists, a reset code has been generated. Check the server console for demo purposes.',
-        // For the hackathon demo, we return the code directly so the UI can show it
-        resetCode
+        message: 'If an account with that email exists, a password reset code has been sent to the server administrator.'
       }
     });
   } catch (err) {
@@ -310,18 +418,44 @@ router.post('/reset-password', async (req, res) => {
     }
 
     const user = await db.users.findOne({ email: email.toLowerCase() });
-    if (!user || user.resetCode !== resetCode) {
+    if (!user) {
       return res.status(400).json({ success: false, error: 'Invalid reset code' });
     }
 
+    if (!user.resetCode) {
+      return res.status(400).json({ success: false, error: 'No active password reset request' });
+    }
+
     if (new Date() > new Date(user.resetExpiry)) {
+      await db.users.update(
+        { _id: user._id },
+        { $unset: { resetCode: true, resetExpiry: true, resetAttempts: true } }
+      );
       return res.status(400).json({ success: false, error: 'Reset code has expired. Please request a new one.' });
+    }
+
+    if (user.resetCode !== resetCode) {
+      const attempts = (user.resetAttempts || 0) + 1;
+      if (attempts >= 3) {
+        // Invalidate reset code
+        await db.users.update(
+          { _id: user._id },
+          { $unset: { resetCode: true, resetExpiry: true, resetAttempts: true } }
+        );
+        return res.status(400).json({ success: false, error: 'Invalid reset code. Too many failed attempts. Please request a new one.' });
+      } else {
+        await db.users.update(
+          { _id: user._id },
+          { $set: { resetAttempts: attempts } }
+        );
+        return res.status(400).json({ success: false, error: `Invalid reset code. You have ${3 - attempts} attempts remaining.` });
+      }
     }
 
     const hashedPassword = await bcrypt.hash(newPassword, 10);
     await db.users.update(
       { _id: user._id },
-      { $set: { password: hashedPassword }, $unset: { resetCode: true, resetExpiry: true } }
+      { $set: { password: hashedPassword }, $unset: { resetCode: true, resetExpiry: true, resetAttempts: true } }
     );
 
     return res.json({ success: true, data: { message: 'Password has been reset successfully. You can now sign in.' } });

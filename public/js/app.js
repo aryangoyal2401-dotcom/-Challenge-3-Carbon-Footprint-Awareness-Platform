@@ -63,7 +63,7 @@ const greetingText = document.getElementById('greeting-text');
 
 let isSignUpMode = false;
 let captchaVerified = false;
-let captchaExpectedAnswer = null;
+let captchaTokenVal = null;
 
 // ---------- Password strength checker ----------
 function checkPasswordStrength(password) {
@@ -115,29 +115,21 @@ if (authConfirmPasswordInput) {
 }
 
 // ---------- CAPTCHA system ----------
-function generateCaptcha() {
-  const ops = ['+', '-', '×'];
-  const op = ops[Math.floor(Math.random() * ops.length)];
-  let a, b, answer;
-  switch (op) {
-    case '+':
-      a = Math.floor(Math.random() * 20) + 1;
-      b = Math.floor(Math.random() * 20) + 1;
-      answer = a + b;
-      break;
-    case '-':
-      a = Math.floor(Math.random() * 20) + 5;
-      b = Math.floor(Math.random() * a);
-      answer = a - b;
-      break;
-    case '×':
-      a = Math.floor(Math.random() * 10) + 1;
-      b = Math.floor(Math.random() * 10) + 1;
-      answer = a * b;
-      break;
+// ---------- CAPTCHA system ----------
+async function generateCaptcha() {
+  if (captchaQuestion) captchaQuestion.textContent = 'Generating...';
+  try {
+    const res = await fetch('/api/auth/captcha');
+    const data = await res.json();
+    if (data.success) {
+      captchaTokenVal = data.data.token;
+      if (captchaQuestion) captchaQuestion.textContent = data.data.question;
+    } else {
+      if (captchaQuestion) captchaQuestion.textContent = 'Error. Click checkbox to retry.';
+    }
+  } catch (err) {
+    if (captchaQuestion) captchaQuestion.textContent = 'Network error. Click checkbox to retry.';
   }
-  captchaExpectedAnswer = answer;
-  if (captchaQuestion) captchaQuestion.textContent = `What is ${a} ${op} ${b}?`;
 }
 
 if (captchaCheckbox) {
@@ -148,6 +140,7 @@ if (captchaCheckbox) {
       if (captchaAnswer) { captchaAnswer.value = ''; captchaAnswer.focus(); }
     } else {
       captchaVerified = false;
+      captchaTokenVal = null;
       if (captchaChallenge) captchaChallenge.classList.add('hidden');
       if (captchaSuccess) captchaSuccess.classList.add('hidden');
       if (captchaLabel) captchaLabel.classList.remove('hidden');
@@ -156,19 +149,35 @@ if (captchaCheckbox) {
 }
 
 if (captchaVerifyBtn) {
-  captchaVerifyBtn.addEventListener('click', () => {
+  captchaVerifyBtn.addEventListener('click', async () => {
     const userAnswer = parseInt(captchaAnswer?.value, 10);
-    if (userAnswer === captchaExpectedAnswer) {
-      captchaVerified = true;
-      if (captchaChallenge) captchaChallenge.classList.add('hidden');
-      if (captchaLabel) captchaLabel.classList.add('hidden');
-      if (captchaSuccess) captchaSuccess.classList.remove('hidden');
-      showToast('Verification successful ✓', 'success');
-    } else {
-      captchaVerified = false;
-      showToast('Incorrect answer. Try again.', 'error');
-      generateCaptcha();
-      if (captchaAnswer) { captchaAnswer.value = ''; captchaAnswer.focus(); }
+    if (isNaN(userAnswer)) {
+      showToast('Please enter a valid number.', 'error');
+      return;
+    }
+
+    try {
+      const res = await fetch('/api/auth/verify-captcha', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ captchaAnswer: userAnswer, captchaToken: captchaTokenVal })
+      });
+      const data = await res.json();
+
+      if (data.success) {
+        captchaVerified = true;
+        if (captchaChallenge) captchaChallenge.classList.add('hidden');
+        if (captchaLabel) captchaLabel.classList.add('hidden');
+        if (captchaSuccess) captchaSuccess.classList.remove('hidden');
+        showToast('Verification successful ✓', 'success');
+      } else {
+        captchaVerified = false;
+        showToast(data.error || 'Incorrect answer. Try again.', 'error');
+        generateCaptcha();
+        if (captchaAnswer) { captchaAnswer.value = ''; captchaAnswer.focus(); }
+      }
+    } catch (err) {
+      showToast('Network error during verification.', 'error');
     }
   });
 }
@@ -300,7 +309,7 @@ if (loginForm) {
       let user;
       if (isSignUpMode) {
         if (!name) { showLoginError('Please enter your name.'); if(btnAuthSubmit){btnAuthSubmit.disabled=false;btnAuthSubmit.textContent='Sign Up';} return; }
-        user = await register(email, password, name);
+        user = await register(email, password, name, parseInt(captchaAnswer?.value, 10), captchaTokenVal);
         showToast('Account created! Welcome to EcoTrack 🌿', 'success');
       } else {
         user = await login(email, password);
@@ -333,12 +342,14 @@ if (btnSignout) {
 
 // Mobile menu
 if (mobileMenuToggle) mobileMenuToggle.addEventListener('click', () => {
-  if (sidebar) sidebar.classList.toggle('open');
+  const isOpen = sidebar && sidebar.classList.toggle('open');
   if (sidebarOverlay) sidebarOverlay.classList.toggle('active');
+  mobileMenuToggle.setAttribute('aria-expanded', isOpen ? 'true' : 'false');
 });
 if (sidebarOverlay) sidebarOverlay.addEventListener('click', () => {
   if (sidebar) sidebar.classList.remove('open');
   sidebarOverlay.classList.remove('active');
+  if (mobileMenuToggle) mobileMenuToggle.setAttribute('aria-expanded', 'false');
 });
 
 // ---------- Forgot Password Flow ----------
@@ -413,15 +424,13 @@ if (btnForgotSend) {
         if (forgotStepEmail) forgotStepEmail.classList.add('hidden');
         if (forgotStepReset) forgotStepReset.classList.remove('hidden');
 
-        // For the demo, show the reset code directly
-        if (data.data.resetCode && forgotCodeDisplay) {
+        if (forgotCodeDisplay) {
           forgotCodeDisplay.innerHTML = `<div class="reset-code-box">
-            <span class="text-secondary">Your reset code (demo mode):</span>
-            <strong class="reset-code-value">${data.data.resetCode}</strong>
+            <span class="text-secondary">A reset code has been generated. Check the server console or contact your administrator.</span>
           </div>`;
         }
 
-        showToast('Reset code generated!', 'success');
+        showToast('Reset code generated! Check the server console.', 'success');
       } else {
         showForgotError(data.error || 'Failed to process request.');
       }

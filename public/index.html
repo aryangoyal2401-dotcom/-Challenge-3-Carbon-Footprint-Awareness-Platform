@@ -16,7 +16,7 @@
 <body>
 
   <!-- Toast Container -->
-  <div id="toast-container"></div>
+  <div id="toast-container" aria-live="polite" aria-atomic="true"></div>
 
   <!-- Loading Overlay -->
   <div id="loading-overlay" class="loading-overlay">
@@ -64,7 +64,7 @@
       </div>
 
       <div class="login-form-container">
-        <div id="login-error" class="login-error hidden"></div>
+        <div id="login-error" class="login-error hidden" aria-live="assertive"></div>
 
         <form id="login-form" class="login-form">
           <div id="signup-name-field" class="form-group hidden">
@@ -73,11 +73,11 @@
           </div>
           <div class="form-group">
             <label for="auth-email">Email</label>
-            <input type="email" id="auth-email" placeholder="Enter your email" required autocomplete="email">
+            <input type="email" id="auth-email" placeholder="Enter your email" required autocomplete="email" aria-required="true">
           </div>
           <div class="form-group">
             <label for="auth-password">Password</label>
-            <input type="password" id="auth-password" placeholder="Enter your password" required autocomplete="current-password">
+            <input type="password" id="auth-password" placeholder="Enter your password" required autocomplete="current-password" aria-required="true">
             <div id="password-strength" class="password-strength hidden">
               <div class="strength-bar"><div id="strength-fill" class="strength-fill"></div></div>
               <span id="strength-text" class="strength-text">Too short</span>
@@ -122,13 +122,13 @@
       <div id="forgot-password-panel" class="login-form-container hidden">
         <h2 class="forgot-title">Reset Password</h2>
         <p class="text-secondary" style="margin-bottom:16px;">Enter your email to receive a reset code.</p>
-        <div id="forgot-error" class="login-error hidden"></div>
+        <div id="forgot-error" class="login-error hidden" aria-live="assertive"></div>
 
         <!-- Step 1: Email -->
         <div id="forgot-step-email">
           <div class="form-group">
             <label for="forgot-email">Email</label>
-            <input type="email" id="forgot-email" placeholder="Enter your registered email" required>
+            <input type="email" id="forgot-email" placeholder="Enter your registered email" required aria-required="true">
           </div>
           <button type="button" id="btn-forgot-send" class="btn btn-primary btn-block">Send Reset Code</button>
         </div>
@@ -157,7 +157,7 @@
   <!-- App Shell -->
   <div id="app-shell" class="app-shell hidden">
     <!-- Sidebar -->
-    <aside id="sidebar" class="sidebar">
+    <aside id="sidebar" class="sidebar" role="complementary" aria-label="Sidebar Menu">
       <div class="sidebar-header">
         <div class="sidebar-user">
           <div id="user-avatar" class="user-avatar">
@@ -170,7 +170,7 @@
           </div>
         </div>
       </div>
-      <nav class="sidebar-nav">
+      <nav class="sidebar-nav" role="navigation" aria-label="Main Navigation">
         <a href="#" class="nav-link active" data-page="dashboard">
           <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
             <rect x="3" y="3" width="7" height="7" rx="1"/>
@@ -242,7 +242,7 @@
     </aside>
 
     <!-- Mobile Menu Toggle -->
-    <button id="mobile-menu-toggle" class="mobile-menu-toggle">
+    <button id="mobile-menu-toggle" class="mobile-menu-toggle" aria-label="Toggle Navigation Menu" aria-expanded="false" aria-controls="sidebar">
       <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
         <line x1="3" y1="6" x2="21" y2="6"/>
         <line x1="3" y1="12" x2="21" y2="12"/>
@@ -254,7 +254,7 @@
     <div id="sidebar-overlay" class="sidebar-overlay"></div>
 
     <!-- Main Content -->
-    <main class="main-content">
+    <main id="main-content" class="main-content" role="main" aria-label="Main Content">
       <div class="top-bar">
         <h1 id="page-title" class="page-title">Dashboard</h1>
         <div class="top-bar-actions">

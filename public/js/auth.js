@@ -42,11 +42,11 @@ export async function login(email, password) {
   return data.data.user;
 }
 
-export async function register(email, password, displayName) {
+export async function register(email, password, displayName, captchaAnswer, captchaToken) {
   const res = await fetch('/api/auth/register', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ email, password, displayName })
+    body: JSON.stringify({ email, password, displayName, captchaAnswer, captchaToken })
   });
   const data = await res.json();
   if (!data.success) throw new Error(data.error);

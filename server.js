@@ -5,6 +5,8 @@ const helmet = require('helmet');
 const cors = require('cors');
 const morgan = require('morgan');
 const path = require('path');
+const rateLimiter = require('./middleware/rateLimiter');
+const sanitize = require('./middleware/sanitize');
 
 // Initialize nedb databases (auto-loaded on require)
 const db = require('./config/db');
@@ -19,6 +21,7 @@ app.use(cors());
 app.use(morgan('dev'));
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true }));
+app.use(sanitize);
 
 // ---------------------------------------------------------------------------
 // Static files
@@ -28,6 +31,7 @@ app.use(express.static(path.join(__dirname, 'public')));
 // ---------------------------------------------------------------------------
 // API Routes
 // ---------------------------------------------------------------------------
+app.use('/api/auth', rateLimiter(20, 15 * 60 * 1000));
 app.use('/api/auth', require('./routes/auth'));
 app.use('/api/activities', require('./routes/activities'));
 app.use('/api/dashboard', require('./routes/dashboard'));
