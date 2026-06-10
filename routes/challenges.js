@@ -1,6 +1,7 @@
 const express = require('express');
 const db = require('../config/db');
 const { verifyToken } = require('../middleware/auth');
+const { checkAndAwardBadges, BADGE_DEFINITIONS } = require('../utils/badgeEngine');
 
 const router = express.Router();
 
@@ -137,81 +138,7 @@ const CHALLENGE_TEMPLATES = [
 ];
 
 // ---------------------------------------------------------------------------
-// Badge definitions (16 badges)
-// ---------------------------------------------------------------------------
-const BADGE_DEFINITIONS = [
-  { id: 'first_log', name: 'First Step', icon: '👣', description: 'Log your first activity' },
-  { id: 'week_streak', name: 'Week Warrior', icon: '🔥', description: '7-day logging streak' },
-  { id: 'month_streak', name: 'Monthly Master', icon: '🏆', description: '30-day logging streak' },
-  { id: 'carbon_cutter_10', name: 'Carbon Cutter', icon: '✂️', description: 'Save 10 kg CO₂' },
-  { id: 'eco_cyclist', name: 'Eco Cyclist', icon: '🚴', description: 'Log 10 bike rides' },
-  {
-    id: 'plant_powered',
-    name: 'Plant Powered',
-    icon: '🌱',
-    description: 'Log 20 vegan/vegetarian meals',
-  },
-  {
-    id: 'transit_rider',
-    name: 'Transit Rider',
-    icon: '🚇',
-    description: 'Use public transit 15 times',
-  },
-  {
-    id: 'energy_guru',
-    name: 'Energy Guru',
-    icon: '💡',
-    description: 'Log 30 low-energy days',
-  },
-  {
-    id: 'carbon_cutter_100',
-    name: 'Carbon Slasher',
-    icon: '⚔️',
-    description: 'Save 100 kg CO₂',
-  },
-  {
-    id: 'five_challenges',
-    name: 'Challenge Accepted',
-    icon: '🎯',
-    description: 'Complete 5 challenges',
-  },
-  {
-    id: 'ten_challenges',
-    name: 'Challenge Champion',
-    icon: '🥇',
-    description: 'Complete 10 challenges',
-  },
-  {
-    id: 'eco_shopper',
-    name: 'Eco Shopper',
-    icon: '🛍️',
-    description: 'Log 10 sustainable purchases',
-  },
-  {
-    id: 'walker',
-    name: 'Happy Walker',
-    icon: '🥾',
-    description: 'Log 20 walking trips',
-  },
-  {
-    id: 'carbon_cutter_500',
-    name: 'Carbon Hero',
-    icon: '🦸',
-    description: 'Save 500 kg CO₂',
-  },
-  {
-    id: 'year_streak',
-    name: 'Year Legend',
-    icon: '🌟',
-    description: '365-day logging streak',
-  },
-  {
-    id: 'zero_emission_day',
-    name: 'Zero Day',
-    icon: '🌍',
-    description: 'Log a day with zero emissions',
-  },
-];
+// Badge definitions are imported from utils/badgeEngine.js
 
 // ---------------------------------------------------------------------------
 // GET /api/challenges/available – templates with join status
@@ -306,9 +233,6 @@ router.post('/join/:challengeId', verifyToken, async (req, res) => {
   }
 });
 
-// ---------------------------------------------------------------------------
-// PUT /api/challenges/:id/progress – update progress
-// ---------------------------------------------------------------------------
 router.put('/:id/progress', verifyToken, async (req, res) => {
   try {
     const challenge = await db.challenges.findOne({
@@ -327,99 +251,21 @@ router.put('/:id/progress', verifyToken, async (req, res) => {
     const { increment } = req.body;
     const incrementValue = typeof increment === 'number' ? increment : 1;
     const newValue = Math.min(challenge.currentValue + incrementValue, challenge.targetValue);
-
     const updateFields = { currentValue: newValue };
 
-    // Check completion
     if (newValue >= challenge.targetValue) {
       updateFields.completed = true;
       updateFields.completedAt = new Date();
-
-      // Award badge for completing challenges
-      const completedCount = await db.challenges.count({
-        userId: req.user._id,
-        completed: true,
-      });
-
-      // +1 because current one isn't saved yet
-      const totalCompleted = completedCount + 1;
-
-      const user = await db.users.findOne({ _id: req.user._id });
-      const userBadges = user.badges || [];
-      const badgesToAward = [];
-
-      if (totalCompleted >= 5 && !userBadges.some((b) => b.badgeId === 'five_challenges')) {
-        badgesToAward.push({
-          badgeId: 'five_challenges',
-          name: 'Challenge Accepted',
-          icon: '🎯',
-          earnedAt: new Date(),
-        });
-      }
-
-      if (totalCompleted >= 10 && !userBadges.some((b) => b.badgeId === 'ten_challenges')) {
-        badgesToAward.push({
-          badgeId: 'ten_challenges',
-          name: 'Challenge Champion',
-          icon: '🥇',
-          earnedAt: new Date(),
-        });
-      }
-
-      if (badgesToAward.length > 0) {
-        await db.users.update(
-          { _id: req.user._id },
-          { $push: { badges: { $each: badgesToAward } } }
-        );
-      }
     }
 
     await db.challenges.update({ _id: req.params.id }, { $set: updateFields });
 
+    // Check and award badges automatically
+    await checkAndAwardBadges(req.user._id);
+
     const updated = await db.challenges.findOne({ _id: req.params.id });
     return res.json({ success: true, data: updated });
   } catch (err) {
-    // nedb-promises doesn't support $each in $push, fallback to manual update
-    if (err.message && err.message.includes('$each')) {
-      try {
-        const challenge = await db.challenges.findOne({ _id: req.params.id });
-        const user = await db.users.findOne({ _id: req.user._id });
-        const userBadges = user.badges || [];
-
-        const completedCount = await db.challenges.count({
-          userId: req.user._id,
-          completed: true,
-        });
-        const totalCompleted = completedCount + 1;
-
-        const badgesToAward = [];
-        if (totalCompleted >= 5 && !userBadges.some((b) => b.badgeId === 'five_challenges')) {
-          badgesToAward.push({
-            badgeId: 'five_challenges',
-            name: 'Challenge Accepted',
-            icon: '🎯',
-            earnedAt: new Date(),
-          });
-        }
-        if (totalCompleted >= 10 && !userBadges.some((b) => b.badgeId === 'ten_challenges')) {
-          badgesToAward.push({
-            badgeId: 'ten_challenges',
-            name: 'Challenge Champion',
-            icon: '🥇',
-            earnedAt: new Date(),
-          });
-        }
-
-        const newBadges = [...userBadges, ...badgesToAward];
-        await db.users.update({ _id: req.user._id }, { $set: { badges: newBadges } });
-
-        const updated = await db.challenges.findOne({ _id: req.params.id });
-        return res.json({ success: true, data: updated });
-      } catch (innerErr) {
-        console.error('PUT /api/challenges/:id/progress fallback error:', innerErr);
-        return res.status(500).json({ success: false, error: 'Failed to update progress' });
-      }
-    }
     console.error('PUT /api/challenges/:id/progress error:', err);
     return res.status(500).json({ success: false, error: 'Failed to update progress' });
   }
@@ -464,6 +310,9 @@ router.get('/completed', verifyToken, async (req, res) => {
 // ---------------------------------------------------------------------------
 router.get('/badges', verifyToken, async (req, res) => {
   try {
+    // First check and award any badges to ensure the user gets their latest badges
+    await checkAndAwardBadges(req.user._id);
+
     const user = await db.users.findOne({ _id: req.user._id });
     if (!user) {
       return res.status(404).json({ success: false, error: 'User not found' });
@@ -474,13 +323,19 @@ router.get('/badges', verifyToken, async (req, res) => {
       earnedMap[badge.badgeId] = badge.earnedAt;
     }
 
-    const badges = BADGE_DEFINITIONS.map((def) => ({
+    const allBadges = BADGE_DEFINITIONS.map((def) => ({
       ...def,
       earned: !!earnedMap[def.id],
       earnedAt: earnedMap[def.id] || null,
     }));
 
-    return res.json({ success: true, data: badges });
+    return res.json({
+      success: true,
+      data: {
+        badges: user.badges || [],
+        all: allBadges
+      }
+    });
   } catch (err) {
     console.error('GET /api/challenges/badges error:', err);
     return res.status(500).json({ success: false, error: 'Failed to fetch badges' });

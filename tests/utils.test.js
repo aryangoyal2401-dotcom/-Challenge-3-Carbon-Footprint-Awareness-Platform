@@ -54,7 +54,8 @@ describe('EcoTrack Utilities', () => {
     const detailedActivities = [
       { category: 'transportation', subCategory: 'car_gasoline', carbonKg: 50 },
       { category: 'food', subCategory: 'beef_meal', carbonKg: 14 },
-      { category: 'energy', subCategory: 'electricity_india', carbonKg: 20 }
+      { category: 'energy', subCategory: 'electricity_india', carbonKg: 20 },
+      { category: 'shopping', subCategory: 'clothing_fast', carbonKg: 10 }
     ];
     const userProfile = { profile: { dietType: 'heavy-meat' } };
     const insights = generateInsights(detailedActivities, userProfile);
@@ -62,5 +63,23 @@ describe('EcoTrack Utilities', () => {
     expect(insights.some(i => i.title === 'Switch to Cycling')).toBe(true);
     expect(insights.some(i => i.title === 'Meatless Mondays')).toBe(true);
     expect(insights.length).toBeGreaterThan(3);
+  });
+
+  test('JWT_SECRET production generation', () => {
+    const originalEnv = process.env.NODE_ENV;
+    const originalSecret = process.env.JWT_SECRET;
+    delete process.env.JWT_SECRET;
+    process.env.NODE_ENV = 'production';
+
+    // Clear cache
+    delete require.cache[require.resolve('../middleware/auth')];
+    const auth = require('../middleware/auth');
+    expect(auth.JWT_SECRET).toBeDefined();
+    expect(auth.JWT_SECRET.length).toBe(64);
+
+    // Restore
+    process.env.NODE_ENV = originalEnv;
+    if (originalSecret) process.env.JWT_SECRET = originalSecret;
+    delete require.cache[require.resolve('../middleware/auth')];
   });
 });

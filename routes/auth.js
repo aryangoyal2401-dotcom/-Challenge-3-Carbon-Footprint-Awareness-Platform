@@ -2,7 +2,8 @@ const express = require('express');
 const bcrypt = require('bcryptjs');
 const crypto = require('crypto');
 const db = require('../config/db');
-const { verifyToken, generateToken } = require('../middleware/auth');
+const { verifyToken, generateToken, JWT_SECRET } = require('../middleware/auth');
+const { NATIONAL_AVERAGES } = require('../utils/emissionFactors');
 
 const router = express.Router();
 
@@ -35,7 +36,7 @@ router.get('/captcha', (req, res) => {
   const timestamp = Date.now();
   const rawData = `${answer}.${timestamp}`;
   const hash = crypto
-    .createHmac('sha256', process.env.JWT_SECRET || 'ecotrack-secret-key-change-in-production')
+    .createHmac('sha256', JWT_SECRET)
     .update(rawData)
     .digest('hex');
   const token = `${timestamp}.${hash}`;
@@ -73,7 +74,7 @@ router.post('/verify-captcha', (req, res) => {
 
     const rawData = `${captchaAnswer}.${timestamp}`;
     const expectedHash = crypto
-      .createHmac('sha256', process.env.JWT_SECRET || 'ecotrack-secret-key-change-in-production')
+      .createHmac('sha256', JWT_SECRET)
       .update(rawData)
       .digest('hex');
 
@@ -127,7 +128,7 @@ router.post('/register', async (req, res) => {
 
       const rawData = `${captchaAnswer}.${timestamp}`;
       const expectedHash = crypto
-        .createHmac('sha256', process.env.JWT_SECRET || 'ecotrack-secret-key-change-in-production')
+        .createHmac('sha256', JWT_SECRET)
         .update(rawData)
         .digest('hex');
 
@@ -261,11 +262,41 @@ router.put('/profile', verifyToken, async (req, res) => {
     const { householdSize, region, dietType, primaryTransport, monthlyGoal } = req.body;
 
     const updateFields = {};
-    if (householdSize !== undefined) updateFields['profile.householdSize'] = householdSize;
-    if (region !== undefined) updateFields['profile.region'] = region;
-    if (dietType !== undefined) updateFields['profile.dietType'] = dietType;
-    if (primaryTransport !== undefined) updateFields['profile.primaryTransport'] = primaryTransport;
-    if (monthlyGoal !== undefined) updateFields.monthlyGoal = monthlyGoal;
+    if (householdSize !== undefined) {
+      const size = parseInt(householdSize, 10);
+      if (isNaN(size) || size < 1) {
+        return res.status(400).json({ success: false, error: 'Household size must be a positive integer' });
+      }
+      updateFields['profile.householdSize'] = size;
+    }
+    if (region !== undefined) {
+      const validRegions = Object.keys(NATIONAL_AVERAGES);
+      if (!validRegions.includes(region)) {
+        return res.status(400).json({ success: false, error: 'Invalid region option' });
+      }
+      updateFields['profile.region'] = region;
+    }
+    if (dietType !== undefined) {
+      const validDiets = ['omnivore', 'pescatarian', 'vegetarian', 'vegan', 'mixed', 'heavy-meat'];
+      if (!validDiets.includes(dietType)) {
+        return res.status(400).json({ success: false, error: 'Invalid diet type option' });
+      }
+      updateFields['profile.dietType'] = dietType;
+    }
+    if (primaryTransport !== undefined) {
+      const validTransports = ['car', 'public_transit', 'bicycle', 'walking', 'electric_vehicle', 'car_gasoline'];
+      if (!validTransports.includes(primaryTransport)) {
+        return res.status(400).json({ success: false, error: 'Invalid primary transport option' });
+      }
+      updateFields['profile.primaryTransport'] = primaryTransport;
+    }
+    if (monthlyGoal !== undefined) {
+      const goal = parseFloat(monthlyGoal);
+      if (isNaN(goal) || goal < 1) {
+        return res.status(400).json({ success: false, error: 'Monthly goal must be a positive number' });
+      }
+      updateFields.monthlyGoal = goal;
+    }
 
     if (Object.keys(updateFields).length === 0) {
       return res.status(400).json({ success: false, error: 'No fields to update' });

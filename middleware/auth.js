@@ -1,6 +1,14 @@
+const crypto = require('crypto');
 const jwt = require('jsonwebtoken');
 
-const JWT_SECRET = process.env.JWT_SECRET || 'ecotrack-secret-key-change-in-production';
+let JWT_SECRET = process.env.JWT_SECRET;
+if (!JWT_SECRET) {
+  if (process.env.NODE_ENV === 'production') {
+    JWT_SECRET = crypto.randomBytes(32).toString('hex');
+  } else {
+    JWT_SECRET = 'ecotrack-secret-key-change-in-production';
+  }
+}
 
 function verifyToken(req, res, next) {
   const authHeader = req.headers.authorization;

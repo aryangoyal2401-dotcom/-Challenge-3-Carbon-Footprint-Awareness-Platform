@@ -36,9 +36,8 @@ router.get('/rank', verifyToken, async (req, res) => {
       return res.status(404).json({ success: false, error: 'User not found' });
     }
 
-    // Count users with a higher ecoScore
-    const usersAbove = await db.users.find({ ecoScore: { $gt: user.ecoScore } });
-    const rank = usersAbove.length + 1;
+    // Count users with a higher ecoScore efficiently
+    const rank = (await db.users.count({ ecoScore: { $gt: user.ecoScore } })) + 1;
 
     const totalUsers = await db.users.count({});
 

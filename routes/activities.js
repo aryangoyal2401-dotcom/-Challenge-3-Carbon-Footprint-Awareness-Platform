@@ -3,8 +3,41 @@ const db = require('../config/db');
 const { verifyToken } = require('../middleware/auth');
 const { getEmissionFactor } = require('../utils/emissionFactors');
 const { calculateEcoScore } = require('../utils/insightEngine');
+const { checkAndAwardBadges } = require('../utils/badgeEngine');
 
 const router = express.Router();
+
+// ---------------------------------------------------------------------------
+// Carbon saved calculator
+// ---------------------------------------------------------------------------
+function calculateCarbonSaved(category, subCategory, value) {
+  let saved = 0;
+  const val = parseFloat(value);
+  if (isNaN(val) || val <= 0) return 0;
+  if (category === 'food') {
+    if (subCategory === 'vegan_meal') saved = val * (7.0 - 0.3);
+    else if (subCategory === 'vegetarian_meal') saved = val * (7.0 - 0.5);
+    else if (subCategory === 'chicken_meal') saved = val * (7.0 - 1.5);
+    else if (subCategory === 'fish_meal') saved = val * (7.0 - 1.2);
+  } else if (category === 'transportation') {
+    if (subCategory === 'bicycle' || subCategory === 'walking') {
+      saved = val * 0.21;
+    } else if (subCategory === 'car_electric') {
+      saved = val * (0.21 - 0.05);
+    } else if (subCategory === 'bus' || subCategory === 'train' || subCategory === 'subway') {
+      saved = val * (0.21 - 0.05); // compared to gasoline car
+    }
+  } else if (category === 'energy') {
+    if (subCategory === 'solar' || subCategory === 'wind') {
+      saved = val * 0.45;
+    }
+  } else if (category === 'shopping') {
+    if (subCategory === 'clothing_sustainable') {
+      saved = val * 0.02; // fast fashion (0.04) - sustainable (0.02)
+    }
+  }
+  return parseFloat(saved.toFixed(4));
+}
 
 // ---------------------------------------------------------------------------
 // Helper – Update user's ecoScore and totalCO2Saved
@@ -14,42 +47,19 @@ async function updateUserEcoMetrics(userId) {
     const user = await db.users.findOne({ _id: userId });
     if (!user) return;
 
-    // Fetch all user activities
-    const activities = await db.activities.find({ userId });
-
-    // 1. Calculate total CO2 saved based on eco-friendly choices
-    let totalCO2Saved = 0;
-    for (const act of activities) {
-      if (act.category === 'food') {
-        if (act.subCategory === 'vegan_meal') totalCO2Saved += act.value * (7.0 - 0.3);
-        else if (act.subCategory === 'vegetarian_meal') totalCO2Saved += act.value * (7.0 - 0.5);
-        else if (act.subCategory === 'chicken_meal') totalCO2Saved += act.value * (7.0 - 1.5);
-        else if (act.subCategory === 'fish_meal') totalCO2Saved += act.value * (7.0 - 1.2);
-      } else if (act.category === 'transportation') {
-        if (act.subCategory === 'bicycle' || act.subCategory === 'walking') {
-          totalCO2Saved += act.value * 0.21;
-        } else if (act.subCategory === 'car_electric') {
-          totalCO2Saved += act.value * (0.21 - 0.05);
-        } else if (act.subCategory === 'bus' || act.subCategory === 'train' || act.subCategory === 'subway') {
-          totalCO2Saved += act.value * (0.21 - 0.05); // compared to gasoline car
-        }
-      } else if (act.category === 'energy') {
-        if (act.subCategory === 'solar' || act.subCategory === 'wind') {
-          totalCO2Saved += act.value * 0.45;
-        }
-      } else if (act.category === 'shopping') {
-        if (act.subCategory === 'clothing_sustainable') {
-          totalCO2Saved += act.value * 0.02; // fast fashion (0.04) - sustainable (0.02)
-        }
-      }
-    }
-
-    // 2. Calculate current month activities ecoScore
+    // Fetch only current month's activities for ecoScore calculation
     const now = new Date();
     const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
-    const currentMonthActivities = activities.filter(act => new Date(act.date) >= monthStart);
-    
+    const currentMonthActivities = await db.activities.find({ userId, date: { $gte: monthStart } });
+
     const ecoScore = calculateEcoScore(currentMonthActivities, user.monthlyGoal || 500);
+
+    // Fetch all user activities for totalCO2Saved calculation (self-healing)
+    const activities = await db.activities.find({ userId });
+    let totalCO2Saved = 0;
+    for (const act of activities) {
+      totalCO2Saved += calculateCarbonSaved(act.category, act.subCategory, act.value);
+    }
 
     // Update user document
     await db.users.update(
@@ -58,6 +68,119 @@ async function updateUserEcoMetrics(userId) {
     );
   } catch (err) {
     console.error('Error updating user eco metrics:', err);
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Helper – Auto-progress active challenges on activity log
+// ---------------------------------------------------------------------------
+async function autoProgressChallenges(userId, activity) {
+  try {
+    const activeChallenges = await db.challenges.find({ userId, completed: false });
+    for (const ch of activeChallenges) {
+      let increment = 0;
+      switch (ch.challengeId) {
+        case 'meatless_week':
+          if (activity.category === 'food' && ['vegetarian_meal', 'vegan_meal'].includes(activity.subCategory)) {
+            increment = 1;
+          }
+          break;
+        case 'bike_to_work':
+          if (activity.category === 'transportation' && activity.subCategory === 'bicycle') {
+            increment = 1;
+          }
+          break;
+        case 'energy_detective':
+          if (activity.category === 'energy') {
+            increment = 1;
+          }
+          break;
+        case 'zero_waste_week':
+          if (activity.category === 'shopping' && activity.subCategory === 'clothing_sustainable') {
+            increment = 1;
+          }
+          break;
+        case 'public_transport':
+          if (activity.category === 'transportation' && ['bus', 'train', 'subway'].includes(activity.subCategory)) {
+            increment = 1;
+          }
+          break;
+        case 'meatless_monday':
+          if (activity.category === 'food' && ['vegetarian_meal', 'vegan_meal'].includes(activity.subCategory)) {
+            increment = activity.value;
+          }
+          break;
+        case 'vegan_week':
+          if (activity.category === 'food' && activity.subCategory === 'vegan_meal') {
+            increment = activity.value;
+          }
+          break;
+        case 'bike_week':
+          if (activity.category === 'transportation' && activity.subCategory === 'bicycle') {
+            increment = 1;
+          }
+          break;
+        case 'walk_to_work':
+          if (activity.category === 'transportation' && activity.subCategory === 'walking') {
+            increment = 1;
+          }
+          break;
+        case 'carpool_week':
+          if (activity.category === 'transportation' && activity.subCategory === 'carpool') {
+            increment = 1;
+          }
+          break;
+        case 'public_transit_hero':
+          if (activity.category === 'transportation' && ['bus', 'train', 'subway'].includes(activity.subCategory)) {
+            increment = 1;
+          }
+          break;
+        case 'zero_car_day':
+          if (activity.category === 'transportation' && ['bicycle', 'walking', 'bus', 'train', 'subway', 'carpool'].includes(activity.subCategory)) {
+            increment = 1;
+          }
+          break;
+        case 'solar_explorer':
+          if (activity.category === 'energy' && activity.subCategory === 'solar') {
+            increment = 1;
+          }
+          break;
+        case 'energy_saver':
+        case 'unplug_challenge':
+        case 'cold_wash':
+          if (activity.category === 'energy') {
+            increment = 1;
+          }
+          break;
+        case 'sustainable_shopper':
+          if (activity.category === 'shopping' && activity.subCategory === 'clothing_sustainable') {
+            increment = 1;
+          }
+          break;
+        case 'no_fast_fashion':
+          if (activity.category === 'shopping' && activity.subCategory !== 'clothing_fast') {
+            increment = 1;
+          }
+          break;
+        case 'local_food':
+          if (activity.category === 'food' && activity.subCategory !== 'beef_meal' && activity.subCategory !== 'lamb_meal') {
+            increment = 1;
+          }
+          break;
+      }
+
+      if (increment > 0) {
+        const newValue = Math.min(ch.currentValue + increment, ch.targetValue);
+        const updateFields = { currentValue: newValue };
+        if (newValue >= ch.targetValue) {
+          updateFields.completed = true;
+          updateFields.completedAt = new Date();
+        }
+        await db.challenges.update({ _id: ch._id }, { $set: updateFields });
+      }
+    }
+  } catch (err) {
+    console.error('Error auto-progressing challenges:', err);
   }
 }
 
@@ -105,6 +228,14 @@ router.post('/', verifyToken, async (req, res) => {
       });
     }
 
+    const val = parseFloat(value);
+    if (isNaN(val) || val <= 0) {
+      return res.status(400).json({
+        success: false,
+        error: 'value must be a valid positive number',
+      });
+    }
+
     const factor = getEmissionFactor(category, subCategory);
     if (factor === null) {
       return res.status(400).json({
@@ -113,14 +244,14 @@ router.post('/', verifyToken, async (req, res) => {
       });
     }
 
-    const carbonKg = parseFloat((value * factor).toFixed(4));
+    const carbonKg = parseFloat((val * factor).toFixed(4));
     const unit = unitForCategory(category);
 
     const activity = await db.activities.insert({
       userId: req.user._id,
       category,
       subCategory,
-      value: parseFloat(value),
+      value: val,
       unit,
       carbonKg,
       date: new Date(date || Date.now()),
@@ -163,7 +294,14 @@ router.post('/', verifyToken, async (req, res) => {
       );
     }
 
+    // Auto-progress joined challenges
+    await autoProgressChallenges(req.user._id, activity);
+
+    // Update ecoScore and totalCO2Saved
     await updateUserEcoMetrics(req.user._id);
+
+    // Check and award badges automatically
+    await checkAndAwardBadges(req.user._id);
 
     return res.status(201).json({ success: true, data: activity });
   } catch (err) {
@@ -184,8 +322,14 @@ router.get('/', verifyToken, async (req, res) => {
     // Date filters
     if (startDate || endDate) {
       query.date = {};
-      if (startDate) query.date.$gte = new Date(startDate);
-      if (endDate) query.date.$lte = new Date(endDate);
+      if (startDate) {
+        const d = new Date(startDate);
+        if (!isNaN(d.getTime())) query.date.$gte = d;
+      }
+      if (endDate) {
+        const d = new Date(endDate);
+        if (!isNaN(d.getTime())) query.date.$lte = d;
+      }
     }
 
     if (category) {
@@ -243,6 +387,7 @@ router.delete('/:id', verifyToken, async (req, res) => {
     await db.activities.remove({ _id: req.params.id });
 
     await updateUserEcoMetrics(req.user._id);
+    await checkAndAwardBadges(req.user._id);
 
     return res.json({ success: true, data: { message: 'Activity deleted' } });
   } catch (err) {

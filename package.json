@@ -29,5 +29,14 @@
   },
   "devDependencies": {
     "jest": "^30.4.2"
+  },
+  "jest": {
+    "testEnvironment": "node",
+    "coveragePathIgnorePatterns": [
+      "/node_modules/",
+      "/coverage/",
+      "/data/",
+      "/tests/"
+    ]
   }
 }
