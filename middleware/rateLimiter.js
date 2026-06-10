@@ -8,12 +8,16 @@ function rateLimiter(maxRequests = 100, windowMs = 15 * 60 * 1000) {
   const requests = new Map();
 
   // Periodic cleanup to prevent memory leaks
-  setInterval(() => {
+  const timer = setInterval(() => {
     const now = Date.now();
     for (const [key, data] of requests) {
       if (now - data.windowStart > windowMs) requests.delete(key);
     }
   }, windowMs);
+
+  if (timer && typeof timer.unref === 'function') {
+    timer.unref();
+  }
 
   return (req, res, next) => {
     if (req.headers['x-test-bypass'] === 'ecotrack-test-suite-secret') {

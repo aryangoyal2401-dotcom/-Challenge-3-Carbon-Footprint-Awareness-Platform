@@ -78,12 +78,12 @@ app.use((err, _req, res, _next) => {
 });
 
 // ---------------------------------------------------------------------------
-// Start
-// ---------------------------------------------------------------------------
 const PORT = process.env.PORT || 5000;
 
-app.listen(PORT, () => {
-  console.log(`🚀  EcoTrack server running on port ${PORT} (nedb embedded)`);
-});
+if (process.env.NODE_ENV !== 'test') {
+  app.listen(PORT, () => {
+    console.log(`🚀  EcoTrack server running on port ${PORT} (nedb embedded)`);
+  });
+}
 
 module.exports = app;
