@@ -28,6 +28,21 @@ router.post('/register', async (req, res) => {
       });
     }
 
+    // Server-side password strength validation
+    if (password.length < 6) {
+      return res.status(400).json({
+        success: false,
+        error: 'Password must be at least 6 characters long',
+      });
+    }
+
+    if (!/[A-Za-z]/.test(password) || !/[0-9]/.test(password)) {
+      return res.status(400).json({
+        success: false,
+        error: 'Password must contain both letters and numbers',
+      });
+    }
+
     // Check if email already exists
     const existing = await db.users.findOne({ email: email.toLowerCase() });
     if (existing) {

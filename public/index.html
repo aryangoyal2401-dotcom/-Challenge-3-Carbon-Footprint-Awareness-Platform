@@ -78,6 +78,33 @@
           <div class="form-group">
             <label for="auth-password">Password</label>
             <input type="password" id="auth-password" placeholder="Enter your password" required autocomplete="current-password">
+            <div id="password-strength" class="password-strength hidden">
+              <div class="strength-bar"><div id="strength-fill" class="strength-fill"></div></div>
+              <span id="strength-text" class="strength-text">Too short</span>
+            </div>
+          </div>
+          <div id="signup-confirm-password-field" class="form-group hidden">
+            <label for="auth-confirm-password">Confirm Password</label>
+            <input type="password" id="auth-confirm-password" placeholder="Re-enter your password" autocomplete="new-password">
+            <span id="password-match-msg" class="password-match-msg hidden"></span>
+          </div>
+          <div id="captcha-container" class="captcha-container hidden">
+            <div class="captcha-box">
+              <label class="captcha-checkbox-label" id="captcha-label">
+                <input type="checkbox" id="captcha-checkbox">
+                <span class="captcha-checkmark"></span>
+                <span class="captcha-text">I am not a robot</span>
+              </label>
+              <div id="captcha-challenge" class="captcha-challenge hidden">
+                <p class="captcha-question" id="captcha-question"></p>
+                <input type="text" id="captcha-answer" placeholder="Your answer" autocomplete="off">
+                <button type="button" id="captcha-verify-btn" class="btn btn-secondary btn-sm">Verify</button>
+              </div>
+              <div id="captcha-success" class="captcha-success hidden">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg>
+                <span>Verified</span>
+              </div>
+            </div>
           </div>
           <button type="submit" id="btn-auth-submit" class="btn btn-primary btn-block">Sign In</button>
         </form>

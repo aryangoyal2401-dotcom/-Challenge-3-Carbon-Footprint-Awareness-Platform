@@ -40,6 +40,20 @@ const signupNameField = document.getElementById('signup-name-field');
 const authNameInput = document.getElementById('auth-name');
 const authEmailInput = document.getElementById('auth-email');
 const authPasswordInput = document.getElementById('auth-password');
+const authConfirmPasswordInput = document.getElementById('auth-confirm-password');
+const confirmPasswordField = document.getElementById('signup-confirm-password-field');
+const passwordMatchMsg = document.getElementById('password-match-msg');
+const passwordStrength = document.getElementById('password-strength');
+const strengthFill = document.getElementById('strength-fill');
+const strengthText = document.getElementById('strength-text');
+const captchaContainer = document.getElementById('captcha-container');
+const captchaCheckbox = document.getElementById('captcha-checkbox');
+const captchaChallenge = document.getElementById('captcha-challenge');
+const captchaQuestion = document.getElementById('captcha-question');
+const captchaAnswer = document.getElementById('captcha-answer');
+const captchaVerifyBtn = document.getElementById('captcha-verify-btn');
+const captchaSuccess = document.getElementById('captcha-success');
+const captchaLabel = document.getElementById('captcha-label');
 const sidebarNavLinks = document.querySelectorAll('.nav-link[data-page]');
 const btnSignout = document.getElementById('btn-signout');
 const mobileMenuToggle = document.getElementById('mobile-menu-toggle');
@@ -48,6 +62,122 @@ const sidebarOverlay = document.getElementById('sidebar-overlay');
 const greetingText = document.getElementById('greeting-text');
 
 let isSignUpMode = false;
+let captchaVerified = false;
+let captchaExpectedAnswer = null;
+
+// ---------- Password strength checker ----------
+function checkPasswordStrength(password) {
+  let score = 0;
+  if (password.length >= 6) score++;
+  if (password.length >= 10) score++;
+  if (/[A-Z]/.test(password)) score++;
+  if (/[0-9]/.test(password)) score++;
+  if (/[^A-Za-z0-9]/.test(password)) score++;
+  return score; // 0-5
+}
+
+function updateStrengthUI(password) {
+  if (!passwordStrength || !strengthFill || !strengthText) return;
+  const score = checkPasswordStrength(password);
+  const labels = ['Too short', 'Weak', 'Fair', 'Good', 'Strong', 'Excellent'];
+  const colors = ['#ef4444', '#f97316', '#eab308', '#22c55e', '#10b981', '#059669'];
+  const widths = ['5%', '20%', '40%', '60%', '80%', '100%'];
+  strengthFill.style.width = widths[score];
+  strengthFill.style.background = colors[score];
+  strengthText.textContent = labels[score];
+  strengthText.style.color = colors[score];
+}
+
+if (authPasswordInput) {
+  authPasswordInput.addEventListener('input', () => {
+    if (isSignUpMode) {
+      updateStrengthUI(authPasswordInput.value);
+      checkPasswordMatch();
+    }
+  });
+}
+
+function checkPasswordMatch() {
+  if (!authConfirmPasswordInput || !passwordMatchMsg) return;
+  const confirm = authConfirmPasswordInput.value;
+  if (!confirm) { passwordMatchMsg.classList.add('hidden'); return; }
+  if (authPasswordInput.value === confirm) {
+    passwordMatchMsg.textContent = '✓ Passwords match';
+    passwordMatchMsg.className = 'password-match-msg match-ok';
+  } else {
+    passwordMatchMsg.textContent = '✗ Passwords do not match';
+    passwordMatchMsg.className = 'password-match-msg match-error';
+  }
+}
+
+if (authConfirmPasswordInput) {
+  authConfirmPasswordInput.addEventListener('input', checkPasswordMatch);
+}
+
+// ---------- CAPTCHA system ----------
+function generateCaptcha() {
+  const ops = ['+', '-', '×'];
+  const op = ops[Math.floor(Math.random() * ops.length)];
+  let a, b, answer;
+  switch (op) {
+    case '+':
+      a = Math.floor(Math.random() * 20) + 1;
+      b = Math.floor(Math.random() * 20) + 1;
+      answer = a + b;
+      break;
+    case '-':
+      a = Math.floor(Math.random() * 20) + 5;
+      b = Math.floor(Math.random() * a);
+      answer = a - b;
+      break;
+    case '×':
+      a = Math.floor(Math.random() * 10) + 1;
+      b = Math.floor(Math.random() * 10) + 1;
+      answer = a * b;
+      break;
+  }
+  captchaExpectedAnswer = answer;
+  if (captchaQuestion) captchaQuestion.textContent = `What is ${a} ${op} ${b}?`;
+}
+
+if (captchaCheckbox) {
+  captchaCheckbox.addEventListener('change', () => {
+    if (captchaCheckbox.checked) {
+      generateCaptcha();
+      if (captchaChallenge) captchaChallenge.classList.remove('hidden');
+      if (captchaAnswer) { captchaAnswer.value = ''; captchaAnswer.focus(); }
+    } else {
+      captchaVerified = false;
+      if (captchaChallenge) captchaChallenge.classList.add('hidden');
+      if (captchaSuccess) captchaSuccess.classList.add('hidden');
+      if (captchaLabel) captchaLabel.classList.remove('hidden');
+    }
+  });
+}
+
+if (captchaVerifyBtn) {
+  captchaVerifyBtn.addEventListener('click', () => {
+    const userAnswer = parseInt(captchaAnswer?.value, 10);
+    if (userAnswer === captchaExpectedAnswer) {
+      captchaVerified = true;
+      if (captchaChallenge) captchaChallenge.classList.add('hidden');
+      if (captchaLabel) captchaLabel.classList.add('hidden');
+      if (captchaSuccess) captchaSuccess.classList.remove('hidden');
+      showToast('Verification successful ✓', 'success');
+    } else {
+      captchaVerified = false;
+      showToast('Incorrect answer. Try again.', 'error');
+      generateCaptcha();
+      if (captchaAnswer) { captchaAnswer.value = ''; captchaAnswer.focus(); }
+    }
+  });
+}
+
+if (captchaAnswer) {
+  captchaAnswer.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') { e.preventDefault(); captchaVerifyBtn?.click(); }
+  });
+}
 
 // Check auth on load
 onAuthReady(async (user) => {
@@ -108,16 +238,30 @@ function clearLoginForm() {
 
 function toggleSignUpMode() {
   isSignUpMode = !isSignUpMode;
+  captchaVerified = false;
   if (isSignUpMode) {
     if (signupNameField) signupNameField.classList.remove('hidden');
+    if (confirmPasswordField) confirmPasswordField.classList.remove('hidden');
+    if (passwordStrength) passwordStrength.classList.remove('hidden');
+    if (captchaContainer) captchaContainer.classList.remove('hidden');
     if (btnAuthSubmit) btnAuthSubmit.textContent = 'Sign Up';
     if (loginToggleText) loginToggleText.textContent = 'Already have an account?';
     if (loginToggleLink) loginToggleLink.textContent = 'Sign In';
+    // Reset captcha state
+    if (captchaCheckbox) captchaCheckbox.checked = false;
+    if (captchaChallenge) captchaChallenge.classList.add('hidden');
+    if (captchaSuccess) captchaSuccess.classList.add('hidden');
+    if (captchaLabel) captchaLabel.classList.remove('hidden');
+    updateStrengthUI('');
   } else {
     if (signupNameField) signupNameField.classList.add('hidden');
+    if (confirmPasswordField) confirmPasswordField.classList.add('hidden');
+    if (passwordStrength) passwordStrength.classList.add('hidden');
+    if (captchaContainer) captchaContainer.classList.add('hidden');
     if (btnAuthSubmit) btnAuthSubmit.textContent = 'Sign In';
     if (loginToggleText) loginToggleText.textContent = "Don't have an account?";
     if (loginToggleLink) loginToggleLink.textContent = 'Sign Up';
+    if (passwordMatchMsg) passwordMatchMsg.classList.add('hidden');
   }
   hideLoginError();
 }
@@ -131,6 +275,26 @@ if (loginForm) {
     const password = authPasswordInput?.value;
     const name = authNameInput?.value.trim();
     if (!email || !password) { showLoginError('Please enter email and password.'); return; }
+
+    if (isSignUpMode) {
+      // Validate password strength
+      if (checkPasswordStrength(password) < 2) {
+        showLoginError('Password is too weak. Use at least 6 characters with a mix of letters and numbers.');
+        return;
+      }
+      // Validate confirm password
+      const confirmPassword = authConfirmPasswordInput?.value;
+      if (password !== confirmPassword) {
+        showLoginError('Passwords do not match.');
+        return;
+      }
+      // Validate CAPTCHA
+      if (!captchaVerified) {
+        showLoginError('Please complete the "I am not a robot" verification.');
+        return;
+      }
+    }
+
     if (btnAuthSubmit) { btnAuthSubmit.disabled = true; btnAuthSubmit.textContent = isSignUpMode ? 'Creating account...' : 'Signing in...'; }
     try {
       let user;
